@@ -14,3 +14,5 @@ for easy importing into your `$PATH`.
 
 For more information, browse to the subfolders to view the individual README files.
 
+I will continue to add scripts to this repo as I have time and as the need for them arises.
+
