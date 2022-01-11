@@ -1,0 +1,21 @@
+#!/bin/sh
+
+reverse_lookup() {
+  while read -r ip; do
+    result="$(host "$ip" |\
+      grep -v NXDOMAIN |\
+      grep -oE 'domain name pointer.*\.$' |\
+      awk -F 'pointer ' '{print $2}' |\
+      sed 's/.$//g')"
+    if [ "$result" ]; then
+      echo "${ip},${result}"
+    fi
+  done
+}
+
+if [ "$1" ]; then
+  cat "${@}" | reverse_lookup
+else
+  reverse_lookup
+fi
+
