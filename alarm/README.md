@@ -32,7 +32,7 @@ In the above example, the sound file specified in the script will start playing 
 The command can be very flexible:
 
 ```
-$ alarm "tomorrow 10:45AM"
+$ alarm tomorrow 10:45AM
 setting alarm for Thu 20 Jan 2022 10:45:00 AM CST...
 ```
 
