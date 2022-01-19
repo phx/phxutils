@@ -16,7 +16,7 @@ For more information, browse to the subfolders to view the individual README fil
 
 I will continue to add scripts to this repo as I have time and as the need for them arises.
 
-## Usage and Referencing:
+## Usage and Referencing
 
 I would do something like the following:
 
