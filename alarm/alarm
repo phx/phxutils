@@ -1,0 +1,39 @@
+#!/bin/sh
+
+# turn off alarm if run without arguments:
+if [ -z "$1" ]; then
+  rm -f /tmp/alarm.tmp
+  echo 'alarm is off'
+  exit
+fi
+
+# path to the alarm sound to play:
+sound='/usr/share/sounds/gnome/default/alerts/bark.ogg'
+
+# if on macos, 'date' may need to be replaced with 'gdate'
+# installed via homebrew (or install gnu-date and symlink 'date' to 'gdate'
+if [ -n "$1" ]; then
+  time=$(date -d "${1}")
+  epoch=$(date -d "$time" +%s)
+  echo "setting alarm for ${time}..."
+  echo $epoch > /tmp/alarm.tmp
+fi
+
+
+(until [ ! -f /tmp/alarm.tmp ]; do
+  until [ $(date +%s) -ge $epoch ]; do
+    sleep 1
+  done
+  # macos:
+  # osascript -e 'display notification "ALARM"'
+  # linux:
+  notify-send "ALARM"
+  # macos:
+  # afplay "$sound"
+  # OR
+  # say "YOUR ALARM IS GOING OFF"
+  # linux:
+  paplay "$sound"
+  sleep 5
+done >/dev/null 2>&1)& >/dev/null 2>&1
+
