@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# path to the alarm sound to play:
+sound='/usr/share/sounds/gnome/default/alerts/bark.ogg'
+
 # turn off alarm if run without arguments:
 if [ -z "$1" ]; then
   rm -f /tmp/alarm.tmp
@@ -7,18 +10,13 @@ if [ -z "$1" ]; then
   exit
 fi
 
-# path to the alarm sound to play:
-sound='/usr/share/sounds/gnome/default/alerts/bark.ogg'
-
 # if on macos, 'date' may need to be replaced with 'gdate'
 # installed via homebrew (or install gnu-date and symlink 'date' to 'gdate'
-if [ -n "$1" ]; then
-  time=$(date -d "$*")
-  epoch=$(date -d "$time" +%s)
-  echo "setting alarm for ${time}..."
-  echo $epoch > /tmp/alarm.tmp
-fi
 
+time=$(date -d "$*")
+epoch=$(date -d "$time" +%s)
+echo "setting alarm for ${time}..."
+echo $epoch > /tmp/alarm.tmp
 
 (until [ ! -f /tmp/alarm.tmp ]; do
   until [ $(date +%s) -ge $epoch ]; do
