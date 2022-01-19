@@ -40,3 +40,12 @@ timer is off
 ```
 
 In the above example, the sound file specified in the script will start playing on loop, and you will get a GUI alert every 5 seconds until the timer is disabled.
+
+### Cross-platform operation on MacOS:
+
+As-is, the script is built to run on Linux, utilizing `paplay` for sounds and `notify-send` for GUI alerts.
+
+I have put various comments in the script for use with MacOS:
+- The native `afplay` command can be used in place of `paplay`
+- The native `say` command can alternately be used in place of `paplay` and replace the reliance on the sound file
+- The native `osascript` command can be used in place of `notify-send`
