@@ -46,5 +46,5 @@ or you can just use GNU `date` by default on your system by doing something like
 ```
 brew install coreutils
 sudo mv /bin/date /bin/bsd-date
-sudo ln -s /usr/local/bin/date /bin/date
+sudo ln -s /usr/local/bin/gdate /bin/date
 ```
