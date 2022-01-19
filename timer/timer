@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-# if on macos, 'date' may need to be replaced with 'gdate'
-# installed via homebrew (or install coreutils and symlink 'date' to 'gdate'
 time=$(date +%s)
 
 # path to the alarm sound file:
