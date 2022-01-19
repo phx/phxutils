@@ -13,7 +13,7 @@ sound='/usr/share/sounds/gnome/default/alerts/bark.ogg'
 # if on macos, 'date' may need to be replaced with 'gdate'
 # installed via homebrew (or install gnu-date and symlink 'date' to 'gdate'
 if [ -n "$1" ]; then
-  time=$(date -d "${1}")
+  time=$(date -d "$*")
   epoch=$(date -d "$time" +%s)
   echo "setting alarm for ${time}..."
   echo $epoch > /tmp/alarm.tmp
