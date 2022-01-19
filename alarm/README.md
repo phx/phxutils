@@ -29,6 +29,13 @@ alarm is off
 
 In the above example, the sound file specified in the script will start playing on loop, and you will get a GUI alert every 5 seconds until the alarm is disabled.
 
+The command can be very flexible:
+
+```
+$ alarm "tomorrow 10:45AM"
+setting alarm for Thu 20 Jan 2022 10:45:00 AM CST...
+```
+
 ### Cross-platform operation on MacOS:
 
 As-is, the script is built to run on Linux, utilizing `paplay` for sounds and `notify-send` for GUI alerts.
