@@ -26,8 +26,7 @@ Note: replace `.bashrc` with `.zshrc` or `.bash_profile`, etc., as necessary.
 mkdir -p "$HOME/bin"
 cd "$HOME/bin"
 git clone https://github.com/phx/shell_utils
-echo 'MY_BIN="$HOME/bin"' >> ~/.bashrc
-echo 'SHELL_UTILS="$MY_BIN/shell_utils/bin"' >> ~/.bashrc
+echo 'SHELL_UTILS="$HOME/bin/shell_utils/bin"' >> ~/.bashrc
 echo 'export PATH="$SHELL_UTILS:$MY_BIN:$PATH"' >> ~/.bashrc
 source ~/.bashrc
 ```
