@@ -35,7 +35,7 @@ As-is, the script is built to run on Linux, utilizing `paplay` for sounds and `n
 
 I have put various comments in the script for use with MacOS:
 - The native `afplay` command can be used in place of `paplay`
-- The native `say` command can replace the reliance on the sound file
+- The native `say` command can alternately be used in place of `paplay` and replace the reliance on the sound file
 - The native `osascript` command can be used in place of `notify-send`
 
 The most important dependency is the reliance on GNU `date` in order for this script to work properly.
