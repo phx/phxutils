@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+
+# if on macos, 'date' may need to be replaced with 'gdate'
+# installed via homebrew (or install coreutils and symlink 'date' to 'gdate'
+time=$(date +%s)
+
+# path to the alarm sound file:
+sound='/usr/share/sounds/gnome/default/alerts/bark.ogg'
+
+usage() {
+  echo "
+Usage: timer [number] [s|m|h|seconds|minutes|hours]
+"
+  exit 1
+}
+
+if [[ -z $1 ]]; then
+  rm -f /tmp/timer.tmp
+  echo 'timer is off'
+  exit
+fi
+
+num=$(echo "${@}" | grep -oE '[0-9]+')
+
+if [[ -z $num ]]; then usage; fi
+
+
+if echo "${@}" | grep -E '[Hh]' | grep -vE '(-h)|(elp)'; then
+  seconds=$((num*60*60))
+  echo "setting timer for $num hour(s)..."
+elif echo "${@}" | grep -E '[Mm]'; then
+  seconds=$((num*60))
+  echo "setting timer for $num minute(s)..."
+elif echo "${@}" | grep -E '[Ss]'; then
+  seconds=$num
+  echo "setting timer for $num seconds..."
+else
+  usage
+fi
+
+target=$((time+seconds))
+echo $target > /tmp/timer.tmp
+
+(until [[ ! -f /tmp/timer.tmp ]]; do
+  until [[ $(date +%s) -ge $target ]]; do
+    sleep 1
+  done
+  # macos:
+  # osascript -e 'display notification "TIMER"'
+  # linux:
+  notify-send "TIMER"
+  # macos:
+  # afplay "$sound"
+  # OR
+  # say "YOUR TIMER IS GOING OFF"
+  # linux:
+  paplay "$sound"
+  sleep 5
+done >/dev/null 2>&1)& >/dev/null 2>&1
