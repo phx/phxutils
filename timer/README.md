@@ -30,7 +30,7 @@ timer 3 hours
 ## Usage:
 
 ```
-# Set alarm for 10am:
+# Set timer for 10 minutes:
 $ timer 10m
 setting timer for 10 minute(s)...
 
