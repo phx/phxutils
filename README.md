@@ -16,3 +16,18 @@ For more information, browse to the subfolders to view the individual README fil
 
 I will continue to add scripts to this repo as I have time and as the need for them arises.
 
+## Usage and Referencing:
+
+I would do something like the following:
+
+Note: replace `.bashrc` with `.zshrc` or `.bash_profile`, etc., as necessary.
+
+```
+mkdir -p "$HOME/bin"
+cd "$HOME/bin"
+git clone https://github.com/phx/shell_utils
+echo 'MY_BIN="$HOME/bin"' >> ~/.bashrc
+echo 'SHELL_UTILS="$MY_BIN/shell_utils/bin"' >> ~/.bashrc
+echo 'export PATH="$SHELL_UTILS:$MY_BIN:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+```
