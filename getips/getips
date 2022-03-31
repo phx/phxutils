@@ -1,0 +1,53 @@
+#!/usr/bin/env python3
+
+import json
+import os
+import socket
+import sys
+
+interfaces = {}
+
+def get_interfaces() -> dict:
+	ifconfig = json.loads(os.popen('ip -j addr').read())
+	for iface in ifconfig:
+		interface = iface.get('ifname')
+		addr_info = iface.get('addr_info')
+		if not addr_info:
+			continue
+		interfaces[interface] = []
+		for family in addr_info:
+			ip = family.get('local')
+			if ip:
+				interfaces[interface].append(ip)
+	return interfaces
+
+
+if __name__ == '__main__':
+	interfaces = get_interfaces()
+	keys = interfaces.keys()
+	if len(sys.argv) > 2:
+		ifname = sys.argv[2]
+		ipv4 = False
+	elif len(sys.argv) > 1:
+		ifname = sys.argv[1]
+		ipv4 = True
+	else:
+		print(json.dumps(interfaces, indent=2))
+		sys.exit()
+	try:
+		output = interfaces[ifname]
+	except KeyError:
+		print("Interface not found. Here are a list of valid interfaces:\n")
+		[print(key) for key in keys]
+		print()
+		sys.exit()
+	if not ipv4:
+		print(json.dumps(output, indent=2))
+		sys.exit()
+	for ip in output:
+		try:
+			socket.inet_aton(ip)
+			print(ip)
+		except socket.error:
+			pass
+	
