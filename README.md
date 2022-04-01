@@ -49,11 +49,11 @@ This means, you won't clutter your native Python intallation by installing a bun
 
 ### Upgrading via pip
 
-`pip3 install --user --upgrade phxutils`
+`pip3 install --upgrade --user phxutils`
 
 or
 
-`pip3 install --user --upgrade git+https://github.com/phx/phxutils`
+`pip3 install --upgrade --user git+https://github.com/phx/phxutils`
 
 ### Uninstall
 
