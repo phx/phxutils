@@ -1,15 +1,18 @@
+import glob
 from setuptools import setup
 # you may need setuptools instead of distutils
 
+binfiles = glob.glob('bin/*')
+
 setup(
     # basic stuff here
-    name='getips',
-    version='1.0',
-    scripts = ['getips'],
+    name='shellutils',
+    version='1.1',
+    scripts = binfiles,
     author='phx',
     author_email='phx@example.com',
-    description='list IPs with or without their associated network interfaces',
-    url='https://github.com/phx/shell_utils/tree/master/getips',
+    description='various useful shell utilities',
+    url='https://github.com/phx/shell_utils',
     classifiers=[
          "Programming Language :: Python :: 3",
          "License :: OSI Approved :: MIT License",
