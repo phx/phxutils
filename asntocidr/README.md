@@ -15,11 +15,12 @@ AS49184
 AS49140
 ```
 
-The following 3 commands will all return the same output.
+The following 4 commands will all return the same output.
 
 ```
-$ cat asns.list | asntocidr
 $ asntocidr asns.list
+$ asntocidr < asns.list
+$ cat asns.list | asntocidr
 $ asntocidr AS39577 AS49184 AS49140
 ```
 
