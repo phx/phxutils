@@ -33,7 +33,7 @@ The following additional requirements are necessary:
 
 Installation is extremely simple using [`pip`](https://pip.pypa.io/en/stable/installation/):
 
-Install from Pypi:
+Install from [PyPi](https://pypi.org/project/phxutils/):
 
 `pip3 install --user phxutils`
 
