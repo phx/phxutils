@@ -70,7 +70,7 @@ mkdir -p "$HOME/bin"
 cd "$HOME/bin"
 git clone https://github.com/phx/phxutils
 echo 'PHX_UTILS="$HOME/bin/phxutils/bin"' >> ~/.bashrc
-echo 'export PATH="$PHX_UTILS:$MY_BIN:$PATH"' >> ~/.bashrc
+echo 'export PATH="$PHX_UTILS:$PATH"' >> ~/.bashrc
 source ~/.bashrc
 ```
 
