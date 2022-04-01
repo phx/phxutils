@@ -7,15 +7,15 @@ with open("README.md", "r", encoding="utf-8") as fh:
 binfiles = glob.glob('bin/*')
 
 setuptools.setup(
-    name='phxshellutils',
-    version='1.2',
+    name='phxutils',
+    version='1.0.3',
     scripts = binfiles,
     author='phx',
     author_email='phx@example.com',
     description='various useful shell utilities',
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url='https://github.com/phx/shellutils',
+    url='https://github.com/phx/phxutils',
     classifiers=[
          "Programming Language :: Python :: 3",
          "License :: OSI Approved :: MIT License",

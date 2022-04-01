@@ -1,4 +1,4 @@
-# shellutils
+# phxutils
 
 This is going to be a handy little repo where I maintain some of useful scripts
 that I use on a regular basis.  I have a private repo where I have maintained
@@ -7,10 +7,11 @@ general public, and half the time I forget what they do and end up re-writing th
 
 This repo will be a place for me to keep them up-to-date and document what they do.
 
-The structure that I'm going to try to create will be an individual folder for each
-script with a `README.md` documenting what the script does.  Additionally, there
-will be a `bin` directory where I will try to symlink all of the actual scripts
-for easy importing into your `$PATH`.
+The structure includes an individual folder for each script with a `README.md` documenting
+what the script does.  Additionally, there will be a `bin` directory where I will symlink
+all of the actual scripts for easy importing into your `$PATH`.
+
+This project is also maintained on PyPi for easy installation via `pip`.
 
 For more information, browse to the subfolders to view the individual README files.
 
@@ -34,13 +35,13 @@ Installation is extremely simple using [`pip`](https://pip.pypa.io/en/stable/ins
 
 Install from Pypi:
 
-`pip3 install --user phxshellutils`
+`pip3 install --user phxutils`
 
 or install latest version from GitHub:
 
-`pip3 install --user git+https://github.com/phx/shellutils`
+`pip3 install --user git+https://github.com/phx/phxutils`
 
-For what it's worth, most of the `phxshellutils` scripts use `sh` and `bash`.
+For what it's worth, most of the `phxutils` scripts use `sh` and `bash`.
 
 The only Python scripts at the time of this writing are Python3, and are executable with hashbangs pointing to `/usr/bin/env python3` and only use the standard library.
 
@@ -48,15 +49,15 @@ This means, you won't clutter your native Python intallation by installing a bun
 
 ### Upgrading via pip
 
-`pip3 install --user --upgrade phxshellutils`
+`pip3 install --user --upgrade phxutils`
 
 or
 
-`pip3 install --user --upgrade git+https://github.com/phx/shellutils`
+`pip3 install --user --upgrade git+https://github.com/phx/phxutils`
 
 ### Uninstall
 
-`pip3 uninstall phxshellutils`
+`pip3 uninstall phxutils`
 
 ## Advanced Installation
 
@@ -67,9 +68,9 @@ Note: replace `.bashrc` with `.zshrc` or `.bash_profile`, etc., as necessary.
 ```
 mkdir -p "$HOME/bin"
 cd "$HOME/bin"
-git clone https://github.com/phx/shellutils
-echo 'SHELL_UTILS="$HOME/bin/shellutils/bin"' >> ~/.bashrc
-echo 'export PATH="$SHELL_UTILS:$MY_BIN:$PATH"' >> ~/.bashrc
+git clone https://github.com/phx/phxutils
+echo 'PHX_UTILS="$HOME/bin/phxutils/bin"' >> ~/.bashrc
+echo 'export PATH="$PHX_UTILS:$MY_BIN:$PATH"' >> ~/.bashrc
 source ~/.bashrc
 ```
 
@@ -77,11 +78,11 @@ The benefits to this method are an easier upgrade.
 
 ### Easy Upgrade via Advanced Install Method
 
-`cd "$HOME/bin/shellutils" && git pull`
+`cd "$HOME/bin/phxutils" && git pull`
 
 ### Uninstall
 
-`sed -i '/SHELL_UTILS/d' ~/.bashrc && rm -rf "$HOME/bin/shellutils"`
+`sed -i '/PHX_UTILS/d' ~/.bashrc && rm -rf "$HOME/bin/phxutils"`
 
 Note: replace `.bashrc` with `.zshrc` or `.bash_profile`, etc., as necessary in the above command.
 
