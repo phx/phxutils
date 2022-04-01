@@ -1,0 +1,28 @@
+#!/bin/sh
+
+# trap ctrl-c and call ctrl_c()
+trap ctrl_c INT
+
+ctrl_c() {
+  echo
+  echo 'Caught Ctrl-C. Exiting...'
+  exit 1
+}
+
+lookup() {
+  while read line; do
+    whois -h whois.radb.net -- "-i origin $line" | grep 'route:' | awk '{print $NF}'
+  done
+}
+
+if [ ! -z $1 ]; then
+  for i in ${@}; do
+    if [ -f "$i" ]; then
+      lookup < "$i"
+    else
+      whois -h whois.radb.net -- "-i origin $i" | grep 'route:' | awk '{print $NF}'
+    fi
+  done
+else
+  lookup
+fi
