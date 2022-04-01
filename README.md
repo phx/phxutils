@@ -32,26 +32,31 @@ The following additional requirements are necessary:
 
 Installation is extremely simple using [`pip`](https://pip.pypa.io/en/stable/installation/):
 
+Install from Pypi:
+
+`pip3 install --user phxshellutils`
+
+or install latest version from GitHub:
+
 `pip3 install --user git+https://github.com/phx/shellutils`
 
-For what it's worth, most of the `shellutils` scripts use `sh` and `bash`.
+For what it's worth, most of the `phxshellutils` scripts use `sh` and `bash`.
 
 The only Python scripts at the time of this writing are Python3, and are executable with hashbangs pointing to `/usr/bin/env python3` and only use the standard library.
 
 This means, you won't clutter your native Python intallation by installing a bunch of third party libraries outside of virtual environments.
 
-This also means that it shouldn't matter what version of `pip` you use, since it's just using the `setuptools` module.
-That being said, I would always recommend `pip3`, or better yet, using `python3 -m pip` rather than `pip3`.
-
-Just try to remember to use the same version of `pip` for uninstalling or upgrading.
-
 ### Upgrading via pip
+
+`pip3 install --user --upgrade phxshellutils`
+
+or
 
 `pip3 install --user --upgrade git+https://github.com/phx/shellutils`
 
 ### Uninstall
 
-`pip3 uninstall shellutils`
+`pip3 uninstall phxshellutils`
 
 ## Advanced Installation
 
