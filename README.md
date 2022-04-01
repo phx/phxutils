@@ -1,4 +1,4 @@
-# shell_utils
+# shellutils
 
 This is going to be a handy little repo where I maintain some of useful scripts
 that I use on a regular basis.  I have a private repo where I have maintained
