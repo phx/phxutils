@@ -1,15 +1,17 @@
-# ipgrep
+# ipgrep/cidrgrep
 
 Dependencies:
 
 - `/bin/sh`
 
-`ipgrep` will grab all IPv4 addresses from stdin or a file.
+`ipgrep` should grab all valid IPv4 addresses from stdin or a file: `0.0.0.0-255.255.255.255`
 
-It's a simple alternative always having to type `grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}` (and is actually more accurate, by only targeting `0.0.0.0-255.255.255.255`.
+`cidrgrep` should do the same for IPv4 networks in CIDR notation: `0.0.0.0/8-255.255.255.255/32`
 
-It leaves IPs in the order they were found. Sorting can be done by piping to `sort -u`.
+They leave IPs in the order they were found. Sorting can be done by piping to `sort -u`.
 
 ## Usage
 
 `ipgrep [FILE]` or `[some command that returns scattered ips in output] | ipgrep`
+
+`cidrgrep [FILE]` or `[some command that returns scattered ips in output] | cidrgrep`
