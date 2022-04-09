@@ -7,6 +7,22 @@ import sys
 
 interfaces = {}
 
+help_text = """Usage: getips <[interface name]>
+
+If run by itself, 'getips' returns a JSON dictionary of interfaces with their associated IPv4 and IPv6 addresses.
+
+Optional arguments:
+
+[interface name]  returns the IPv4 address associated with the queried interface
+"""
+
+
+def usage(exit=True):
+	print(help_text)
+	if exit:
+		sys.exit(-1)
+
+
 def get_interfaces() -> dict:
 	ifconfig = json.loads(os.popen('ip -j addr').read())
 	for iface in ifconfig:
@@ -37,7 +53,8 @@ if __name__ == '__main__':
 	try:
 		output = interfaces[ifname]
 	except KeyError:
-		print("Interface not found. Here are a list of valid interfaces:\n")
+		usage(exit=False)
+		print("Interfaces with assigned IPs:")
 		[print(key) for key in keys]
 		print()
 		sys.exit()
@@ -50,4 +67,3 @@ if __name__ == '__main__':
 			print(ip)
 		except socket.error:
 			pass
-	
