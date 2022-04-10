@@ -10,6 +10,10 @@ Want to see all IPs associated with each active interface? Easy:
 
 `getips`
 
+Need your external IP? Simple:
+
+`getips wan` or `getips ext`
+
 The main `getips` command is extensible, as it returns all interfaces with IPs in JSON format, so it can be filtered via `jq` for whatever reason, if necessary.
 
 ## Example output
@@ -42,4 +46,7 @@ $ getips
     "172.17.0.1"
   ]
 }  
+
+$ getips wan
+104.88.220.81
 ```
