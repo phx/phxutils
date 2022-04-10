@@ -19,7 +19,7 @@ I will continue to add scripts to this repo as I have time and as the need for t
 
 ## Requirements:
 
-In order to fully-utilize all of the scripts included in `shellutils`, Linux is a pre-requisite, but many will work on MacOS (but some may need to be tweaked a bit).
+In order to fully-utilize all of the scripts included in `phxutils`, Linux is a pre-requisite, but many will work on MacOS (some may need to be tweaked a bit).
 
 To view individual requirements, feel free to view each package's README file.
 
