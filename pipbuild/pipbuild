@@ -1,0 +1,42 @@
+#/bin/sh
+
+if [ ! -f setup.py ]; then
+  echo 'setup.py not found.'
+  exit 1
+fi
+
+if ! python3 -c "import twine" >/dev/null 2>&1; then
+  echo "please run 'python3 -m pip install twine' and try again."
+  exit 1
+fi
+
+rm -rf build dist *.egg-info
+
+# run pipbuild -m|--manual after setting a custom version number in setup.py,
+# otherwise, build number will be automatically incremented.
+if ! echo "${@}" | grep -q '\-m'; then
+  BUILD_NO="$(grep -oE "version='[0-9]+\.[0-9]+\.[0-9]+'" setup.py | sed 's/version=//' | tr -d "'")"
+  BUILD_PREFIX="$(echo "$BUILD_NO" | grep -oE '[0-9]+\.[0-9]+')"
+  BUILD_EXT="$(echo "$BUILD_NO" | grep -oE '[0-9]+$')"
+  BUILD_EXT=$((BUILD_EXT+1))
+
+  sed -i "s/version='$BUILD_NO'/version='${BUILD_PREFIX}.${BUILD_EXT}'/" setup.py
+fi
+
+python3 -m build
+
+if [ $? -ne 0 ]; then
+  echo 'python3 -m build exited with a non-zero status.'
+  exit 1
+fi
+
+# $PYPI_USER can be set to your actual username or the value of your token.
+# if $PYPI_PASS isn't set, you will be asked for password.
+# if neither value is set, you will be asked for both username/token and password.
+if [ ! -z $PYPI_USER ] && [ ! -z $PYPI_PASS ]; then
+  python3 -m twine upload dist/* --verbose -u"$PYPI_USER" -p"$PYPI_PASS"
+elif [ ! -z $PYPI_USER ]; then
+  python3 -m twine upload dist/* --verbose -u"$PYPI_USER"
+else
+  python3 -m twine upload dist/* --verbose
+fi
