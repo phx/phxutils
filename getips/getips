@@ -4,6 +4,7 @@ import json
 import os
 import socket
 import sys
+import urllib3
 
 interfaces = {}
 
@@ -21,6 +22,22 @@ def usage(exit=True):
 	print(help_text)
 	if exit:
 		sys.exit(-1)
+
+
+def get_wan_ips():
+	wanip_urls = ['http://ifconfig.me',
+        	      'http://icanhazip.com',
+        	      'http://ipinfo.io/ip'
+	       	     ]
+	responses = []
+	http = urllib3.PoolManager()
+	for url in wanip_urls:
+        	response = http.request("GET", url)
+        	if response.status == 200:
+                	responses.append(response.data.decode("utf-8").replace('\n', ''))
+	wanip = set(responses)
+	[print(ip) for ip in wanip]
+	sys.exit()
 
 
 def get_interfaces() -> dict:
@@ -45,6 +62,8 @@ if __name__ == '__main__':
 		ifname = sys.argv[2]
 		ipv4 = False
 	elif len(sys.argv) > 1:
+		if 'wan' in sys.argv[1] or 'ext' in sys.argv[1]:
+			get_wan_ips()
 		ifname = sys.argv[1]
 		ipv4 = True
 	else:
