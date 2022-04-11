@@ -20,7 +20,8 @@ if ! echo "${@}" | grep -q '\-m'; then
   BUILD_EXT="$(echo "$BUILD_NO" | grep -oE '[0-9]+$')"
   BUILD_EXT=$((BUILD_EXT+1))
 
-  sed -i "s/version='$BUILD_NO'/version='${BUILD_PREFIX}.${BUILD_EXT}'/" setup.py
+  sed "s/version='$BUILD_NO'/version='${BUILD_PREFIX}.${BUILD_EXT}'/" setup.py > tmp &&\
+  mv tmp setup.py
 fi
 
 python3 -m build
