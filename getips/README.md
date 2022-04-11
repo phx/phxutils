@@ -1,18 +1,24 @@
 # getips
 
+Requirements:
+
+- `python3`
+- `grep`
+- `ip` (`iproute2`) or `ifconfig` (`net-tools`)
+
 Get all your interface names and their associated IPs when you are fed up with `ip` and/or `ifconfig`.
 
 Want to get your WiFi IPv4 address in plain-text that can be easily piped or copied to the clipboard? Easy:
 
-`getips wlan0`
+`getips wlan0` or `getips -i wlan0`
 
 Want to see all IPs associated with each active interface? Easy:
 
-`getips`
+`getips -a` or `getips --all`
 
 Need your external IP? Simple:
 
-`getips wan` or `getips ext`
+`getips -w` or `getips --wan`
 
 The main `getips` command is extensible, as it returns all interfaces with IPs in JSON format, so it can be filtered via `jq` for whatever reason, if necessary.
 
@@ -22,13 +28,13 @@ The main `getips` command is extensible, as it returns all interfaces with IPs i
 $ getips wlp2s0
 192.168.1.15
 
-$ getips -all wlp2s0
+$ getips wlp2s0 -6
 [
   "192.168.1.20",
   "fe80::3917:919a:1b2b:52c1"
 ]
 
-$ getips
+$ getips --all
 {
   "lo": [
     "127.0.0.1",
@@ -47,6 +53,6 @@ $ getips
   ]
 }  
 
-$ getips wan
+$ getips --wan
 104.88.220.81
 ```

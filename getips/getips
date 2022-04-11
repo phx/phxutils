@@ -1,20 +1,28 @@
 #!/usr/bin/env python3
 
+import argparse
 import json
 import os
+import re
+import shutil
 import socket
 import sys
-import urllib3
+import urllib.request
+import urllib.error
 
-interfaces = {}
+Description = """
+'getips' is a helper utility for displaying active interfaces and IP addresses associated with them.
+"""
 
 help_text = """Usage: getips <[interface name]>
 
-If run by itself, 'getips' returns a JSON dictionary of interfaces with their associated IPv4 and IPv6 addresses.
+If run with '-a|--all', 'getips' returns a JSON dictionary of interfaces with their associated IPv4 and IPv6 addresses.
 
 Optional arguments:
 
-[interface name]  returns the IPv4 address associated with the queried interface
+[interface name]    returns the IPv4 address associated with the queried interface
+-6 | --ipv6         returns IPv4 + IPv6 info in [INTERFACE] output
+-w | --wan          returns your external WAN IP address
 """
 
 
@@ -24,65 +32,130 @@ def usage(exit=True):
 		sys.exit(-1)
 
 
-def get_wan_ips():
-	wanip_urls = ['http://ifconfig.me',
-        	      'http://icanhazip.com',
-        	      'http://ipinfo.io/ip'
-	       	     ]
+def get_ip_cmd() -> str:
+	if not shutil.which('ip') and not shutil.which('ifconfig'):
+		print(f"ERROR: 'ip' or 'ifconfig' is required to run 'getips'.")
+		exit(os.EX_OSERR)
+	if shutil.which('ip'):
+		return 'ip'
+	return 'ifconfig'
+
+
+def get_wan_ips() -> list:
+	wanip_urls = ['http://ifconfig.me', 'http://icanhazip.com', 'http://ipinfo.io/ip']
 	responses = []
-	http = urllib3.PoolManager()
 	for url in wanip_urls:
-        	response = http.request("GET", url)
-        	if response.status == 200:
-                	responses.append(response.data.decode("utf-8").replace('\n', ''))
+		try:
+			with urllib.request.urlopen(url) as response:
+				data = response.read()
+				responses.append(data.decode('utf-8').replace('\n', ''))
+		except urllib.error.HTTPError:
+			pass
+		except urllib.error.URLError:
+			pass
 	wanip = set(responses)
-	[print(ip) for ip in wanip]
-	sys.exit()
+	return [ip for ip in wanip]
 
 
-def get_interfaces() -> dict:
+def ifconfig_get_interfaces() -> dict:
+	active_interfaces = {}
+	ipv4regex = '(([1-9]?[0-9]|1[0-9][0-9]|2([0-4][0-9]|5[0-5]))\.){3}([1-9]?[0-9]|1[0-9][0-9]|2([0-4][0-9]|5[0-5]))'
+	ipv6regex = '(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))'
+	ifconfig_output = os.popen('ifconfig').read()
+	ifaces = []
+	for line in ifconfig_output.split('\n'):
+		matches = re.findall('^[a-z]+[0-9]+: flags=', line)
+		for match in matches:
+			ifaces.append(match.split(': ')[0])
+	for iface in ifaces:
+		ifconfig_output = os.popen(f"ifconfig {iface}").read()
+		ipv4s = []
+		ipv6s = []
+		all_ips = []
+		for line in ifconfig_output.split('\n'):
+			active_ipv4s = os.popen(f"echo '{line}' | grep -oE '{ipv4regex}' | grep -v '\.255$'").read().strip().split('\n')
+			active_ipv6s = os.popen(f"echo '{line}' | grep -oE '{ipv6regex}'").read().strip().split('\n')
+			for active_ipv4 in active_ipv4s:
+				if active_ipv4:
+					ipv4s.append(active_ipv4)
+					all_ips.append(active_ipv4)
+			for active_ipv6 in active_ipv6s:
+				if active_ipv6:
+					ipv6s.append(active_ipv6.split('%')[0])
+					all_ips.append(active_ipv6.split('%')[0])
+		ipv4s = list(set(ipv4s))
+		ipv6s = list(set(ipv6s))
+		all_ips = list(set(all_ips))
+		if all_ips:
+			active_interfaces[iface] = all_ips
+	return active_interfaces
+
+
+def ip_get_interfaces() -> dict:
+	active_interfaces = {}
 	ifconfig = json.loads(os.popen('ip -j addr').read())
 	for iface in ifconfig:
 		interface = iface.get('ifname')
 		addr_info = iface.get('addr_info')
 		if not addr_info:
 			continue
-		interfaces[interface] = []
+		active_interfaces[interface] = []
 		for family in addr_info:
 			ip = family.get('local')
 			if ip:
-				interfaces[interface].append(ip)
-	return interfaces
+				active_interfaces[interface].append(ip)
+	return active_interfaces
+
+
+def get_interfaces() -> dict:
+	if ipcmd == 'ifconfig':
+		return ifconfig_get_interfaces()
+	else:
+		return ip_get_interfaces()
 
 
 if __name__ == '__main__':
+	parser = argparse.ArgumentParser(description=Description, formatter_class=argparse.RawDescriptionHelpFormatter)
+	parser.add_argument('-i', '--interface', help="query a specific interface")
+	parser.add_argument('-6', '--ipv6', help="include IPv6 addresses in output for [INTERFACE]", action="store_true",
+						default=False)
+	parser.add_argument('-a', '--all', help="return all active interfaces with both IPv4 and IPv6 addresses + WAN IP",
+						action="store_true", default=False)
+	parser.add_argument('-w', '--wan', help="get external WAN IP", action="store_true", default=False)
+	parsed, unknown = parser.parse_known_args()
+	if not unknown:
+		args = parser.parse_args()
+	for arg in unknown:
+		parsed.interface = arg
+		args = parser.parse_args(sys.argv[2:])
+		args.interface = arg
+	ipcmd = get_ip_cmd()
 	interfaces = get_interfaces()
 	keys = interfaces.keys()
-	if len(sys.argv) > 2:
-		ifname = sys.argv[2]
-		ipv4 = False
-	elif len(sys.argv) > 1:
-		if 'wan' in sys.argv[1] or 'ext' in sys.argv[1]:
-			get_wan_ips()
-		ifname = sys.argv[1]
-		ipv4 = True
-	else:
+	if args.all:
+		interfaces['wan'] = get_wan_ips()
 		print(json.dumps(interfaces, indent=2))
 		sys.exit()
-	try:
-		output = interfaces[ifname]
-	except KeyError:
-		usage(exit=False)
-		print("Interfaces with assigned IPs:")
-		[print(key) for key in keys]
-		print()
+	elif args.wan and not args.interface:
+		[print(ip) for ip in get_wan_ips()]
 		sys.exit()
-	if not ipv4:
-		print(json.dumps(output, indent=2))
-		sys.exit()
-	for ip in output:
+	elif args.interface:
 		try:
-			socket.inet_aton(ip)
-			print(ip)
-		except socket.error:
-			pass
+			output = interfaces[args.interface]
+		except KeyError:
+			usage(exit=False)
+			print("Interfaces with assigned IPs:")
+			[print(key) for key in keys]
+			print()
+			sys.exit()
+		if args.ipv6:
+			print(json.dumps(output, indent=2))
+			sys.exit()
+		for ip in output:
+			try:
+				socket.inet_aton(ip)
+				print(ip)
+			except socket.error:
+				pass
+	else:
+		usage()
