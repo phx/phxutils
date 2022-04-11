@@ -119,20 +119,32 @@ if __name__ == '__main__':
 						action="store_true", default=False)
 	parser.add_argument('-w', '--wan', help="get external WAN IP", action="store_true", default=False)
 	parsed, unknown = parser.parse_known_args()
-	if not unknown:
+	interface = None
+	if len(sys.argv) < 2:
+		args = None
+		interface = 'all'
+	elif not unknown:
 		args = parser.parse_args()
-	for arg in unknown:
-		parsed.interface = arg
-		args = parser.parse_args(sys.argv[2:])
-		args.interface = arg
+	else:
+		for arg in unknown:
+			parsed.interface = arg
+			args = parser.parse_args(sys.argv[2:])
+			args.interface = arg
 	ipcmd = get_ip_cmd()
 	interfaces = get_interfaces()
 	keys = interfaces.keys()
-	if args.all:
+	if args and args.all:
+		interfaces['wan'] = get_wan_ips()
+		print(json.dumps(interfaces, indent=2))
+		sys.exit()
+	elif interface == 'all':
 		interfaces['wan'] = get_wan_ips()
 		print(json.dumps(interfaces, indent=2))
 		sys.exit()
 	elif args.wan and not args.interface:
+		[print(ip) for ip in get_wan_ips()]
+		sys.exit()
+	elif 'wan' in args.interface or 'ext' in args.interface:
 		[print(ip) for ip in get_wan_ips()]
 		sys.exit()
 	elif args.interface:

@@ -14,11 +14,11 @@ Want to get your WiFi IPv4 address in plain-text that can be easily piped or cop
 
 Want to see all IPs associated with each active interface? Easy:
 
-`getips -a` or `getips --all`
+`getips`
 
 Need your external IP? Simple:
 
-`getips -w` or `getips --wan`
+`getips -w` or `getips wan`
 
 The main `getips` command is extensible, as it returns all interfaces with IPs in JSON format, so it can be filtered via `jq` for whatever reason, if necessary.
 
@@ -34,7 +34,7 @@ $ getips wlp2s0 -6
   "fe80::3917:919a:1b2b:52c1"
 ]
 
-$ getips --all
+$ getips
 {
   "lo": [
     "127.0.0.1",
@@ -53,6 +53,6 @@ $ getips --all
   ]
 }  
 
-$ getips --wan
+$ getips wan
 104.88.220.81
 ```
