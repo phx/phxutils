@@ -14,15 +14,17 @@ Description = """
 'getips' is a helper utility for displaying active interfaces and IP addresses associated with them.
 """
 
-help_text = """Usage: getips <[interface name]>
+help_text = """usage: getips [-h] [-i INTERFACE] [-6] [-a] [-w]
 
-If run with '-a|--all', 'getips' returns a JSON dictionary of interfaces with their associated IPv4 and IPv6 addresses.
+'getips' is a helper utility for displaying active interfaces and IP addresses associated with them.
 
-Optional arguments:
-
-[interface name]    returns the IPv4 address associated with the queried interface
--6 | --ipv6         returns IPv4 + IPv6 info in [INTERFACE] output
--w | --wan          returns your external WAN IP address
+optional arguments:
+  -h, --help            show this help message and exit
+  -i INTERFACE, --interface INTERFACE
+                        query a specific interface
+  -6, --ipv6            include IPv6 addresses in output for [INTERFACE]
+  -a, --all             return all active interfaces with both IPv4 and IPv6 addresses + WAN IP
+  -w, --wan             get external WAN IP
 """
 
 
