@@ -71,22 +71,16 @@ def ifconfig_get_interfaces() -> dict:
 			ifaces.append(match.split(': ')[0])
 	for iface in ifaces:
 		ifconfig_output = os.popen(f"ifconfig {iface}").read()
-		ipv4s = []
-		ipv6s = []
 		all_ips = []
 		for line in ifconfig_output.split('\n'):
 			active_ipv4s = os.popen(f"echo '{line}' | grep -oE '{ipv4regex}' | grep -v '\.255$'").read().strip().split('\n')
 			active_ipv6s = os.popen(f"echo '{line}' | grep -oE '{ipv6regex}'").read().strip().split('\n')
 			for active_ipv4 in active_ipv4s:
 				if active_ipv4:
-					ipv4s.append(active_ipv4)
 					all_ips.append(active_ipv4)
 			for active_ipv6 in active_ipv6s:
 				if active_ipv6:
-					ipv6s.append(active_ipv6.split('%')[0])
 					all_ips.append(active_ipv6.split('%')[0])
-		ipv4s = list(set(ipv4s))
-		ipv6s = list(set(ipv6s))
 		all_ips = list(set(all_ips))
 		if all_ips:
 			active_interfaces[iface] = all_ips
