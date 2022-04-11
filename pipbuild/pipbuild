@@ -24,6 +24,10 @@ if ! echo "${@}" | grep -q '\-m'; then
   mv tmp setup.py
 fi
 
+git add setup.py
+git commit -m 'updated build version'
+git push
+
 python3 -m build
 
 if [ $? -ne 0 ]; then
