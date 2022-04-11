@@ -4,6 +4,7 @@ Requirements:
 
 - `/bin/sh`
 - python3
+- python3 build module
 - python3 twine module
 
 `pipbuild` is a script for auto-incrementing the build number in the current directory's `setup.py` version information, building the package, and uploading to PyPi.
