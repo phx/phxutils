@@ -1,0 +1,116 @@
+#!/bin/sh
+
+CONFIG_DIR="${HOME}/.config/gitswitch"
+CONFIG="${CONFIG_DIR}/config.ini"
+
+cp ~/.ssh/config ~/.ssh/config.bak
+
+START='# BEGIN GIT'
+END='# END GIT'
+
+usage() {
+  echo
+  echo "Usage: gitswitch <init>|<example>|<help>"
+  echo
+  echo "Optional arguments:"
+  echo "help		shows this help text"
+  echo "init		creates the example configuration at ~/.config/gitswitch/config.ini"
+  echo "example		shows the example gitswitch configuration"
+  echo
+  echo "*** IMPORTANT ***"
+  echo "Make sure you have the '# BEGIN GIT' and '# END GIT' comments in '~/.ssh/config'."
+  echo
+  echo "~/.ssh/config should contain something like the following:"
+  echo "
+# BEGIN GIT
+Host github.com
+  HostName github.com
+  User git
+  IdentityFile ~/.ssh/id_rsa
+# END GIT
+"
+  echo "1. modify ~/.ssh/config as stated above."
+  echo "2. run 'gitswitch init' to copy example information to ~/.config/gitswitch/config.ini"
+  echo "3. modify ~/.config/gitswitch/config.ini to reflect your account information"
+  echo "4. run 'gitswitch' to switch between git users"
+  echo
+  exit 1
+}
+
+EXAMPLE_CONFIG=$(cat <<'EOF'
+[profile_1_info]
+GIT_USER=user1
+GIT_EMAIL=user1@example.com
+
+[profile_1_ssh_config]
+Host github.com
+  HostName github.com
+  User git
+  IdentityFile ~/.ssh/id_rsa
+
+[profile_2_info]
+GIT_USER='user2'
+GIT_EMAIL='user2@example.com'
+
+[profile_2_ssh_config]
+Host github.com
+  HostName github.com
+  User git
+  IdentityFile ~/.ssh/github_user2.pem
+EOF
+)
+
+if ! grep -q "$START" ~/.ssh/config; then
+  usage
+elif echo "${@}" | grep -q 'example'; then
+  echo "$EXAMPLE_CONFIG"
+  exit
+elif echo "${@}" | grep -q 'init'; then
+  mkdir -p "$CONFIG_DIR"
+  echo "$EXAMPLE_CONFIG" > "${CONFIG}"
+  echo "gitswitch configuration initialized."
+  exit
+elif [ ! -f "$CONFIG" ]; then
+  usage
+elif [ $# -gt 0 ]; then
+  usage
+fi
+
+switchup() {
+  git config --global user.name "$GIT_USER"
+  git config --global user.email "$GIT_EMAIL"
+  tmp1="$(mktemp)"
+  tmp2="$(mktemp)"
+  echo "$GIT_SSH_CONFIG" > "$tmp1"
+  sed -e "/$START/,/$END/{ /$START/{p; r $tmp1
+        }; /$END/p; d }" ~/.ssh/config > $tmp2
+  mv "$tmp2" ~/.ssh/config
+  rm -f "$tmp1"
+}
+
+profile_1_info="$(sed -n '/profile_1_info/,/profile_1_ssh_config/p' config.ini | sed -n '/GIT_USER/,/GIT_EMAIL/p')"
+profile_2_info="$(sed -n '/profile_2_info/,/profile_2_ssh_config/p' config.ini | sed -n '/GIT_USER/,/GIT_EMAIL/p')"
+PROFILE_1_SSH_CONFIG="$(sed -n '/profile_1_ssh_config/,/profile_2_info/p' config.ini | sed -n '/Host/,/IdentityFile/p')"
+PROFILE_2_SSH_CONFIG="$(sed -n '/profile_2_ssh_config/,/*/p' config.ini | sed -n '/Host/,/IdentityFile/p')"
+
+eval "$profile_1_info"
+PROFILE_1_USER="$GIT_USER"
+PROFILE_1_EMAIL="$GIT_EMAIL"
+eval "$profile_2_info"
+PROFILE_2_USER="$GIT_USER"
+PROFILE_2_EMAIL="$GIT_EMAIL"
+
+if git config --global user.name | grep -q "$PROFILE_1_USER"; then
+  GIT_USER="$PROFILE_2_USER"
+  GIT_EMAIL="$PROFILE_2_EMAIL"
+  GIT_SSH_CONFIG="$PROFILE_2_SSH_CONFIG"
+else
+  GIT_USER="$PROFILE_1_USER"
+  GIT_EMAIL="$PROFILE_1_EMAIL"
+  GIT_SSH_CONFIG="$PROFILE_1_SSH_CONFIG"
+fi
+
+switchup
+
+echo "current git user: $(git config --global user.name)"
+
