@@ -88,10 +88,10 @@ switchup() {
   rm -f "$tmp1"
 }
 
-profile_1_info="$(sed -n '/profile_1_info/,/profile_1_ssh_config/p' config.ini | sed -n '/GIT_USER/,/GIT_EMAIL/p')"
-profile_2_info="$(sed -n '/profile_2_info/,/profile_2_ssh_config/p' config.ini | sed -n '/GIT_USER/,/GIT_EMAIL/p')"
-PROFILE_1_SSH_CONFIG="$(sed -n '/profile_1_ssh_config/,/profile_2_info/p' config.ini | sed -n '/Host/,/IdentityFile/p')"
-PROFILE_2_SSH_CONFIG="$(sed -n '/profile_2_ssh_config/,/*/p' config.ini | sed -n '/Host/,/IdentityFile/p')"
+profile_1_info="$(sed -n '/profile_1_info/,/profile_1_ssh_config/p' "$CONFIG" | sed -n '/GIT_USER/,/GIT_EMAIL/p')"
+profile_2_info="$(sed -n '/profile_2_info/,/profile_2_ssh_config/p' "$CONFIG" | sed -n '/GIT_USER/,/GIT_EMAIL/p')"
+PROFILE_1_SSH_CONFIG="$(sed -n '/profile_1_ssh_config/,/profile_2_info/p' "$CONFIG" | sed -n '/Host/,/IdentityFile/p')"
+PROFILE_2_SSH_CONFIG="$(sed -n '/profile_2_ssh_config/,/*/p' "$CONFIG" | sed -n '/Host/,/IdentityFile/p')"
 
 eval "$profile_1_info"
 PROFILE_1_USER="$GIT_USER"
