@@ -8,7 +8,7 @@ Dependencies:
 
 `cidrgrep` should do the same for IPv4 networks in CIDR notation: `0.0.0.0/0-255.255.255.255/32`
 
-`ipportgrep` will grab IPv4 addresses (0.0.0.0/8) and port numbers (1-65535) in format: `1.2.3.4:12345`
+`ipportgrep` will grab IPv4 addresses (0.0.0.0/0) and port numbers (1-65535) in format: `1.2.3.4:12345`
 
 All utilities leave IPs in the order they were found. Sorting can be done by piping to `sort -u`.
 
