@@ -138,7 +138,6 @@ if __name__ == '__main__':
 		print(json.dumps(interfaces, indent=2))
 		sys.exit()
 	elif interface == 'all':
-		interfaces['wan'] = get_wan_ips()
 		print(json.dumps(interfaces, indent=2))
 		sys.exit()
 	elif args.wan and not args.interface:
