@@ -23,8 +23,11 @@ Parameters:
 -o | --outputfile	path to output file
 			default: cracked.txt
 
--l | --wordlist		path to password list
+-w | --wordlist		path to password list
 			default: rockyou.txt
+
+-a | --args		additonal arguments to pass to hashcat
+                        default: none
 
 Boolean Options:
 -ls  | --list-codes	list all hash type codes with associated hash type names
@@ -50,7 +53,8 @@ while [[ "$#" -gt 0 ]]; do
     -r|--rulesfile) rules_file="$2"; shift; shift ;;
     -i|--inputfile) input_file="$2"; shift; shift ;;
     -o|--outputfile) output_file="$2"; shift; shift ;;
-    -l|--wordlist) wordlist="$2"; shift; shift ;;
+    -w|--wordlist) wordlist="$2"; shift; shift ;;
+    -a|--args) args="$2"; shift; shift;;
     -ls|--list-codes) list_codes=1; shift;;
     -ru1|--rockyou) download=1; rockyou=1; shift;;
     -ru2|--rockyou-2021) download=1; rockyou2021=1; shift;;
@@ -87,9 +91,9 @@ get_crackin() {
   echo -e "wordlist:\t${wordlist}"
   echo "------------------------------------------------"
   echo "hashcat command:"
-  echo hashcat -O -w3 -a 0 -m $hashtype -r "$rules_file" "$input_file" "$wordlist" --outfile "$output_file" --status --status-timer 5
+  echo hashcat -O -w3 -a 0 -m $hashtype -r "$rules_file" "$input_file" "$wordlist" --outfile "$output_file" --status --status-timer 5 "$args"
   echo "------------------------------------------------"
-  hashcat -O -w3 -a 0 -m $hashtype -r "$rules_file" "$input_file" "$wordlist" --outfile "$output_file" --status --status-timer 5
+  hashcat -O -w3 -a 0 -m $hashtype -r "$rules_file" "$input_file" "$wordlist" --outfile "$output_file" --status --status-timer 5 "$args"
 }
 
 dl_stuff() {
