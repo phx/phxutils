@@ -22,6 +22,6 @@ run_remote_updates() {
   done
 }
 
-run_remote_updates
+run_remote_updates ${@}
 
 
