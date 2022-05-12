@@ -1,0 +1,39 @@
+#!/bin/sh
+
+logfile='/var/log/autoupdates.log'
+
+export DEBIAN_FRONTEND=noninteractive
+
+log() {
+  sudo tee -a "$logfile" 2>&1
+}
+
+checkreboot() {
+  if [ -f /var/run/reboot-required ]; then
+    echo "REBOOT REQUIRED"
+    exit 100
+  fi
+}
+
+true | sudo tee /var/log/autoupdates.log
+
+echo "UPDATE STARTED - $(date)" | log
+
+checkreboot | log
+
+sudo apt-get update
+
+updates=$(apt list --upgradable | wc -l | awk '{$1=$1}1')
+
+if [ $updates -gt 0 ]; then
+  echo "$updates updates will be applied" | log
+else
+  echo "No updates available" | log
+  exit 0
+fi
+
+sudo apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" dist-upgrade || (echo 'dist-upgrade error.' | log)
+
+checkreboot
+
+echo "UPDATE FINISHED - $(date)" | log

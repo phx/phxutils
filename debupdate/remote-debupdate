@@ -1,0 +1,27 @@
+#!/bin/sh
+
+# Arguments should in following format:
+# host1 host2 host3 or...
+# ip1 ip2 ip3 or...
+# user@host1 user@ip2 host3...etc.
+
+logfile="/tmp/remote_updates.log"
+
+true > "$logfile"
+
+script="$(cat `which debupdate`)"
+
+numhosts=$(echo "${@}" | tr " " "\n" | wc -l | awk '{$1=$1}1')
+
+run_remote_updates() {
+  for host in ${@}; do
+    (ssh "$host" "echo $script | sudo bash; if [ $? -eq 100 ]; then sudo reboot; fi" | tee -a "$logfile") || continue
+    if [ $(grep -c FINISHED "$logfile") -lt $numhosts ]; then
+      run_remote_updates
+    fi
+  done
+}
+
+run_remote_updates
+
+
