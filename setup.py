@@ -8,7 +8,7 @@ binfiles = glob.glob('bin/*')
 
 setuptools.setup(
     name='phxutils',
-    version='1.1.11',
+    version='1.1.12',
     scripts = binfiles,
     author='phx',
     author_email='phx@example.com',
