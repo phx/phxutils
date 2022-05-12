@@ -15,13 +15,14 @@ numhosts=$(echo "${@}" | tr " " "\n" | wc -l | awk '{$1=$1}1')
 
 run_remote_updates() {
   for host in ${@}; do
-    (ssh "$host" "echo $script | sudo bash; if [ $? -eq 100 ]; then sudo reboot; fi" | tee -a "$logfile") || continue
-    if [ $(grep -c FINISHED "$logfile") -lt $numhosts ]; then
-      run_remote_updates
-    fi
+    (ssh -tt "$host" "echo $script | sudo bash" | tee -a "$logfile") || continue
   done
 }
 
 run_remote_updates ${@}
+
+until [ $(grep -c FINISHED "$logfile") -eq $numhosts ]; do
+   "$0" ${@}
+done
 
 
