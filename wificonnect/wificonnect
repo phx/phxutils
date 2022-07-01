@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+###################
+# dependencies:
+# - bash
+# - sudo
+# - nmcli
+###################
+
+# dependency check
+for i in sudo nmcli; do
+  if ! command -v "$i" >/dev/null 2>&1; then
+    echo "ERROR: $i is not installed."
+    exit 1
+  fi
+done  
+
+# if ran without arguments
+if [[ $# -eq 0 ]]; then
+  sudo nmcli dev wifi list
+  exit $?
+fi
+
+usage() {
+  echo "
+wificonnect <-s SSID -p PASSWORD <-i INTERFACE> <-H|--hidden> >
+
+Options:
+
+-s | --ssid SSID
+-p | --pass PASSWORD
+-i | --interface IFACE (default: wlp2s0)
+-H | --hidden (default: false)
+
+If run without parameters, wificonnect will list details about the wifi networks currently available.
+Parameters can also be set using environment variables and passing dummy arguments.
+"
+  exit 1
+}
+
+# parse arguments:
+while [[ "$#" -gt 0 ]]; do
+  case $1 in
+    -s|--ssid) SSID="${SSID:-$2}"; shift; shift ;;
+    -p|--pass) PASS="${PASS:-$2}"; shift; shift ;;
+    -i|--interface) IFACE="${IFACE:-$2}"; shift; shift ;;
+    -H|--hidden) HIDDEN=1; shift ;;
+    *) usage; shift; shift ;;
+  esac
+done
+
+IFACE="${IFACE:-wlp2s0}"
+
+# make sure wifi is on:
+if sudo nmcli radio wifi | grep -q disabled; then
+  sudo nmcli radio wifi on
+fi
+
+if [[ -z "$HIDDEN" ]]; then
+  echo $IFACE
+  echo sudo nmcli dev wifi connect "$SSID" password "$PASS"
+  exit $?
+fi
+
+# if new hidden network:
+sudo nmcli c add type wifi con-name "$SSID" ifname "$IFACE" ssid "$SSID"
+sudo nmcli con modify "$SSID" wifi-sec.key-mgmt wpa-psk
+sudo nmcli con modify "$SSID" wifi-sec.psk "$PASS"
+sudo nmcli con up "$SSID"
+exit $?
