@@ -1,0 +1,9 @@
+#!/bin/sh
+# Dependencies: OpenSSL
+
+FQDN="${FQDN:-$1}"
+OUTPUTDIR="${OUTPUTDIR:-$PWD}"
+sanitized_fqdn="$(echo "$FQDN" | sed 's/\*/wildcard/g')"
+filename="${OUTPUTDIR}/${sanitized_fqdn}"
+openssl req -x509 -newkey rsa:4096 -keyout "${filename}.key" -out "${filename}.crt" -sha256 -days 3650 -nodes -subj "/CN=$FQDN"
+ls -lh "$filename".*
