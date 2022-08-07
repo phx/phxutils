@@ -6,6 +6,9 @@
 # - nmcli
 ###################
 
+# interface name defaults to wlp2s0, may want to set to 'wlan0':
+IFACE="${IFACE:-wlp2s0}"
+
 # dependency check
 for i in sudo nmcli; do
   if ! command -v "$i" >/dev/null 2>&1; then
@@ -37,18 +40,30 @@ Parameters can also be set using environment variables and passing dummy argumen
   exit 1
 }
 
-# parse arguments:
-while [[ "$#" -gt 0 ]]; do
-  case $1 in
-    -s|--ssid) SSID="${SSID:-$2}"; shift; shift ;;
-    -p|--pass) PASS="${PASS:-$2}"; shift; shift ;;
-    -i|--interface) IFACE="${IFACE:-$2}"; shift; shift ;;
-    -H|--hidden) HIDDEN=1; shift ;;
-    *) usage; shift; shift ;;
-  esac
-done
 
-IFACE="${IFACE:-wlp2s0}"
+# parse arguments:
+parse_args() {
+  while [[ "$#" -gt 0 ]]; do
+    case $1 in
+      -s|--ssid) SSID="${SSID:-$2}"; shift; shift ;;
+      -p|--pass) PASS="${PASS:-$2}"; shift; shift ;;
+      -i|--interface) IFACE="${IFACE:-$2}"; shift; shift ;;
+      -H|--hidden) HIDDEN=1; shift ;;
+      *) usage; shift; shift ;;
+    esac
+  done
+}
+
+# can run with 'wificonnect [ssid] [password]', otherwise parse args:
+if [[ "$#" -eq "2" ]]; then
+  SSID="${SSID:-$1}"
+  PASS="${SSID:-$2}"
+else
+  parse_args
+fi
+
+# rescan for new APs:
+sudo nmcli dev wifi rescan >/dev/null 2>&1
 
 # make sure wifi is on:
 if sudo nmcli radio wifi | grep -q disabled; then
@@ -57,7 +72,7 @@ fi
 
 if [[ -z "$HIDDEN" ]]; then
   echo $IFACE
-  echo sudo nmcli dev wifi connect "$SSID" password "$PASS"
+  sudo nmcli dev wifi connect "$SSID" password "$PASS"
   exit $?
 fi
 
