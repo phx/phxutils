@@ -1,0 +1,201 @@
+#!/usr/bin/env bash
+##########################################################
+# Dependencies:
+# - bash
+# - python3
+# - openssl
+# - iconv
+# - unix2dos
+##########################################################
+# check dependencies:
+for i in python3 openssl iconv; do
+  if ! command -v "$i" >/dev/null 2>&1; then
+    echo "$i is required for this $0 to run."
+    echo "exiting..."
+    exit 1
+  fi
+done
+
+usage() {
+  echo "
+$0 [type] [content]|[-f filename]
+or
+$0 [-t <type> -o <options> <-d> -c [content]
+
+-t|--type	type of encoding (see encoding types below)
+-o|--options	[not currently implemented]
+-d|--decode	decode instead of encode
+-c|--content	everything after -c will be processed (should be quoted, last param)
+-h|--help	show this help output
+
+Encoding Types:
+
+- Quoting:
+  dquote	return content surrounded by double quotes
+  undquote	remove content's surrounding double quotes
+  squote	return content surrounded by single quotes
+  unsquote	remove content's surrounding single quotes
+  psesc		powershell escape quoting
+
+- Base64:
+  b64		base64 single line (cross-platform)
+  b64m		base64 multi-line (*nix)
+  b64wm		base64 multi-line (windows)
+  b64u		base64 unicode single line (cross-platform)
+  b64um		base64 unicode multi-line (*nix)
+  b64wum	base64 unicode multi-line (windows)
+
+- Miscellaneous:
+  u2d		unix2dos (LF -> CRLF)
+  d2u		dos2unix (CRLF -> LF)
+  url		urlencoded
+  oneliner	combine multi-line command into one-liner
+"
+}
+
+parse_args() {
+  while [[ "$#" -gt 0 ]]; do
+    case $1 in
+      -t|--type) TYPE="${TYPE:-$2}"; shift; shift ;;
+      -f|--file) FILE="$2"; shift; shift ;;
+      -o|--options) OPTIONS=1; shift;;
+      -d|--decode) DECODE=1; shift ;;
+      -c|--content) CONTENT="${*:2}"; shift; shift ;;
+      -h|--help) usage; shift; shift ;;
+    esac
+  done
+}
+
+squote() {
+  echo "'${@}'"
+}
+
+unsquote() {
+  echo "${@}" | sed -r "/(^')(.*)('$)/\2/g"
+}
+
+dquote() {
+  echo "\"${@}\""
+}
+
+undquote() {
+  echo "${@}" | sed -r '/(^")(.*)("$)\2/g'
+}
+
+unix2dos() {
+  echo "${@}" | sed 's/$/\r/g' | sed 's/\r\r/\r/g'
+}
+
+dos2unix() {
+ echo "${@}" | sed 's/\r$//g' | sed 's/$$//g'
+}
+
+oneliner() {
+  echo "${@}" | tr '\n' ';' | sed -s 's/$;//g'
+}
+
+psescape() {
+  echo "${@}" | sed "s@'@\`'@g" | sed 's@"@\`"@g'
+}
+
+# if arguments are more than 1 or 4+, $CONTENT = everything after 1st argument:
+if [[ ("$#" -eq "2") || ("$#" -ge "4") ]]; then
+  CONTENT="${*:2}"
+fi
+
+# determine type from 1st argument:
+if [[ "$1" = "url" ]]; then
+  TYPE="url"
+elif [[ "$1" = "u2d" ]]; then
+  TYPE="u2d"
+elif [[ "$1" = "d2u" ]]; then
+  TYPE="d2u"
+elif [[ "$1" = "squote" ]]; then
+  TYPE="squote"
+elif [[ "$1" = "unsquote" ]]; then
+  TYPE="unsquote"
+elif [[ "$1" = "dquote" ]]; then
+  TYPE="dquote"
+elif [[ "$1" = "undquote" ]]; then
+  TYPE="undquote"
+elif [[ ("$1" = "base64") || ("$1" = "b64") ]]; then
+  TYPE="base64"
+elif [[ "$1" = "b64m" ]]; then
+  TYPE="b64m"
+elif [[ "$1" = "b64wm" ]]; then
+  TYPE="b64mw"
+elif [[ "$1" = "b64u" ]]; then
+  TYPE="b64u"
+elif [[ "$1" = "b64um" ]]; then
+  TYPE="b64um"
+elif [[ "$1" = "b64wum" ]]; then
+  TYPE="b64wum"
+elif [[ "$1" = "psesc" ]]; then
+  TYPE="psesc"
+elif [[ "$TYPE" = "oneliner" ]]; then
+  TYPE="oneliner"
+# if 1st arg is not a type, then parse args:
+else
+  parse_args ${@}
+fi
+
+# if file, then change $CONTENT to contents of file:
+if [ ! -z "$FILE" ]; then
+  CONTENT="$(<"$FILE")"
+# if pipe, change $CONTENT to piped input:
+elif [ -p /dev/stdin ]; then
+  CONTENT="$(cat)"
+fi
+
+# ENCODE:
+if [[ -z "$DECODE" ]]; then
+  if [[ "$TYPE" = "u2d" ]]; then
+    unix2dos "$CONTENT"
+  elif [[ "$TYPE" = "d2u" ]]; then
+    dos2unix "$CONTENT"
+  elif [[ "$TYPE" = "squote" ]]; then
+    squote "$CONTENT"
+  elif [[ "$TYPE" = "unsquote" ]]; then
+    unsquote "$CONTENT"
+  elif [[ "$TYPE" = "dquote" ]]; then
+    dquote "$CONTENT"
+  elif [[ "$TYPE" = "unsquote" ]]; then
+    undquote "$CONTENT"
+  elif [[ "$TYPE" = "url" ]]; then
+    python3 -c "import urllib.parse; e=$(squote ${CONTENT}); print(urllib.parse.quote(e));"
+  elif [[ ("$TYPE" = "base64") || ("$TYPE" = "b64") ]]; then
+      echo -n "$CONTENT" | openssl base64 -A
+  elif [[ "$TYPE" = "b64m" ]]; then
+      echo -n "$CONTENT" | openssl base64
+  elif [[ "$TYPE" = "b64wm" ]]; then
+      echo -n "$CONTENT" | openssl base64 | unix2dos
+  elif [[ "$TYPE" = "b64u" ]]; then
+    echo -n "$CONTENT" | iconv -f UTF8 -t UTF16LE | openssl base64 -A
+  elif [[ "$TYPE" = "b64um" ]]; then
+    echo -n "$CONTENT" | iconv -f UTF8 -t UTF16LE | openssl base64
+  elif [[ "$TYPE" = "b64wum" ]]; then
+    echo -n "$CONTENT" | iconv -f UTF8 -t UTF16LE | openssl base64 | unix2dos
+  elif [[ "$TYPE" = "oneliner" ]]; then
+    oneliner "$CONTENT"
+  elif [[ "$TYPE" = "psesc" ]]; then
+    psescape "$CONTENT"
+  fi
+else
+# DECODE:
+  if [[ "$TYPE" = "url" ]]; then
+    python3 -c "import urllib.parse; e=$(quote ${CONTENT}); print(urllib.parse.unquote(e));"
+  elif [[ ("$TYPE" = "base64") || ("$TYPE" = "b64") ]]; then
+      echo -n "$CONTENT" | openssl base64 -A -d
+  elif [[ "$TYPE" = "b64m" ]]; then
+      echo -n "$CONTENT" | openssl base64 -d
+  elif [[ "$TYPE" = "b64wm" ]]; then
+      echo -n "$CONTENT" | openssl base64 -d | unix2dos
+  elif [[ "$TYPE" = "b64u" ]]; then
+    echo -n "$CONTENT" | iconv -f UTF8 -t UTF16LE | openssl base64 -A -d
+  elif [[ "$TYPE" = "b64um" ]]; then
+    echo -n "$CONTENT" | iconv -f UTF8 -t UTF16LE | openssl base64 -d
+  elif [[ "$TYPE" = "b64wum" ]]; then
+    echo -n "$CONTENT" | iconv -f UTF8 -t UTF16LE | openssl base64 -d | unix2dos
+  fi
+fi
+
