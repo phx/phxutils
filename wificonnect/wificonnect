@@ -59,7 +59,7 @@ if [[ "$#" -eq "2" ]]; then
   SSID="${SSID:-$1}"
   PASS="${SSID:-$2}"
 else
-  parse_args
+  parse_args ${@}
 fi
 
 # rescan for new APs:
