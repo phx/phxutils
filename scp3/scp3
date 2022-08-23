@@ -1,0 +1,30 @@
+#!/bin/sh
+###
+# scp3 can be used when `scp -3` is not available or is acting wonky.
+# usage: scp3 user@host_A:/path/to/target_file_or_dir user@host_B:/path/to/destination_file_or_dir [user@host_C:/path/to/destination_file_or_dir] ...
+###
+
+path="$(echo "$1" | cut -d':' -f2-)"
+file_or_dir="$(basename "$path")"
+
+if ! command -v mktemp >/dev/null 2>&1; then
+  tmp="/tmp"
+else
+  tmp="$(mktemp -d)"
+fi
+
+echo
+echo "staging ${1} to ${tmp}/${file_or_dir}..."
+scp -r "${1}" "${tmp}"/
+
+shift
+for i in ${@}; do
+  echo "uploading ${tmp}/${file_or_dir} to ${i}..."
+  scp -r "${tmp}/${file_or_dir}" "$i"
+done
+
+echo "cleaning up..."
+rm -rvf "${tmp}"
+
+echo "done."
+
