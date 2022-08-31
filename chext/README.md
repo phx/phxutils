@@ -95,10 +95,7 @@ for file in *.old_extension; do
 done
 ```
 
-This could potentially work, but it's not POSIX-compliant, and I found a fatal flaw:
-
-You can only do final extensions, so if `chext` were to use this instead of its current implementation, then `chext pdf txt` would work just fine,
-but `chext pdf.txt txt` would fail miserably.
+This could potentially work, but it's not POSIX-compliant, so it couldn't be used in shell scripts or functions using shells like `sh` or `dash`.
 
 **`sed` to the rescue:**
 
