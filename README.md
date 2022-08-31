@@ -7,6 +7,10 @@ general public, and half the time I forget what they do and end up re-writing th
 
 This repo will be a place for me to keep them up-to-date and document what they do.
 
+Some aren't even big enough to be called scripts and are more like bash/zsh functions,
+but it's easier having the commands at my fingertips by having all my tools installed
+instead of finding/copy/pasting functions into my `~/.bashrc`/`~/.zshrc`.
+
 The structure includes an individual folder for each script with a `README.md` documenting
 what the script does.  Additionally, there will be a `bin` directory where I will symlink
 all of the actual scripts for easy importing into your `$PATH`.
