@@ -1,9 +1,9 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
 old_ext="$1"
 new_ext="$2"
 
-for i in *.${old_ext}; do
-  mv -v "$i" "$(echo "$i" | sed "s/.${old_ext}/.${new_ext}/g")"
+for file in *.${old_ext}; do
+  mv -v "$file" "$(echo "$file" | sed "s/.${old_ext}/.${new_ext}/g")"
 done
 
