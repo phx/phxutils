@@ -1,0 +1,70 @@
+#!/bin/sh
+
+INPUT_FILE="$1"
+OUTPUT_FILE="$2"
+BLOCK_SIZE="$3"
+OPTIONS="$4"
+
+usage() {
+  echo "
+Usage: ddp [input_file] [output_file] <block_size> <additional_options>
+
+Defaults:
+block size 		4096
+additional options	conv=notrunc,noerror,fsync
+
+Details:
+If pv or dialog is not installed, then the following default command will be issued:
+sudo dd if=[input_file] of=[output_file] bs=4096 conv=notrunc,noerror,fsync status=progress
+^ block size and additional options (except for 'status=progress') can be overridden by cli arguments.
+If your version of 'dd' does not support 'status=progress', then JUST USE 'dd' INSTEAD!
+"
+}
+
+if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+  usage
+  exit 1
+fi
+
+if ! command -v sudo >/dev/null 2>&1; then
+  echo "$0 requires 'sudo' to be installed."
+  exit 1
+fi
+
+if ! command -v pv >/dev/null 2>&1; then
+  MODE=0
+elif ! command -v dialog >/dev/null 2>&1; then
+  MODE=1
+else
+  MODE=2
+fi
+
+echo "$MODE"
+exit
+
+
+if [ -z "$INPUT_FILE" ]; then
+  echo 'Input file must be specified as first argument.'
+  exit 1
+fi
+if [ -z "$OUTPUT_FILE" ]; then
+  echo 'Output file must be specified as second argument.'
+  exit 1
+fi
+
+if [ -z "$BLOCK_SIZE" ]; then
+  BLOCK_SIZE=4096
+fi
+
+if [ -z "$OPTIONS" ]; then
+  OPTIONS='conv=notrunc,noerror,fsync'
+fi
+
+if [ $MODE = 0 ]; then
+  sudo dd if="$INPUT_FILE" of="$OUTPUT_FILE" bs="$BLOCK_SIZE" "$OPTIONS" status=progress
+elif [ $MODE = 1 ]; then
+  sudo pv -tpreb "$INPUT_FILE" | sudo dd of="$OUTPUT_FILE" bs="$BLOCK_SIZE" "$OPTIONS"
+elif [ $MODE = 2 ]; then
+  (sudo pv -n "$INPUT_FILE" | sudo dd of="$OUTPUT_FILE" bs="$BLOCK_SIZE" "$OPTIONS") 2>&1 | dialog --gauge "Cloning ${INPUT_FILE} to ${OUTPUT_FILE}, please wait..." 10 70 0
+fi
+
