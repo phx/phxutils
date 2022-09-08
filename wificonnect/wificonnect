@@ -57,12 +57,13 @@ parse_args() {
 # can run with 'wificonnect [ssid] [password]', otherwise parse args:
 if [[ "$#" -eq "2" ]]; then
   SSID="${SSID:-$1}"
-  PASS="${SSID:-$2}"
+  PASS="${PASS:-$2}"
 else
   parse_args ${@}
 fi
 
 # rescan for new APs:
+sudo nmcli dev wifi rescan >/dev/null 2>&1
 sudo nmcli dev wifi rescan >/dev/null 2>&1
 
 # make sure wifi is on:
@@ -72,7 +73,7 @@ fi
 
 if [[ -z "$HIDDEN" ]]; then
   echo $IFACE
-  sudo nmcli dev wifi connect "$SSID" password "$PASS"
+  sudo nmcli dev wifi connect "${SSID}" password "${PASS}"
   exit $?
 fi
 
