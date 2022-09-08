@@ -39,10 +39,6 @@ else
   MODE=2
 fi
 
-echo "$MODE"
-exit
-
-
 if [ -z "$INPUT_FILE" ]; then
   echo 'Input file must be specified as first argument.'
   exit 1
