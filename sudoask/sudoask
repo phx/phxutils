@@ -1,0 +1,97 @@
+#!/bin/sh
+
+WITHPASS_CONF="/etc/sudoers.d/sudoask_yes.conf"
+NOPASS_CONF="/etc/sudoers.d/sudoask_no.conf"
+WITHPASS_REGEX='(^%(admin|sudo|wheel)\s+ALL\s=\s\((ALL|ALL:ALL)\)\s)(ALL)'
+NOPASS_REGEX='(^%(admin|sudo|wheel)\s+ALL\s=\s\((ALL|ALL:ALL)\)\s)(NOPASSWD:ALL)'
+ALL_REGEX='^%(admin|sudo|wheel)\s+ALL\s=\s\((ALL|ALL:ALL)\)\s(ALL|NOPASSWD:ALL)'
+
+WITHPASS="$(cat << EOF
+%admin          ALL = (ALL) ALL
+%sudo           ALL = (ALL:ALL) ALL
+%wheel          ALL = (ALL:ALL) ALL
+EOF
+)"
+
+NOPASS="$(cat << EOF
+%admin          ALL = (ALL) NOPASSWD:ALL
+%sudo           ALL = (ALL:ALL) NOPASSWD:ALL
+%wheel          ALL = (ALL:ALL) NOPASSWD:ALL
+EOF
+)"
+
+# make sure /etc/sudoers.d exists:
+if [ ! -d "/etc/sudoers.d" ]; then
+  echo 'this script must use /etc/sudoers.d'
+  echo 'please ensure that /etc/sudoers is making use of /etc/sudoers.d, creatae the directory and try again.'
+  exit 1
+fi
+
+replace() {
+  sudo rm -f /etc/sudoers.d/sudoask*
+  echo "$CONF" | sudo tee "$CONF_FILE" >/dev/null
+  sudo chown root "$CONF_FILE"
+  sudo chmod 0440 "$CONF_FILE"
+}
+
+do_replacement() {
+  if [ "$1" = "no" ] || [ "$1" = "n" ]; then
+    echo 'disabling sudo password...'
+    CONF="$NOPASS"
+    CONF_FILE="$NOPASS_CONF"
+  elif [ "$1" = "yes" ] || [ "$1" = "y" ]; then
+    echo 'enabling sudo password...'
+    CONF="$WITHPASS"
+    CONF_FILE="$WITHPASS_CONF"
+  elif sudo grep -qE "$WITHPASS_REGEX" "/etc/sudoers"; then
+    echo 'disabling sudo password...'
+    CONF="$NOPASS"
+    CONF_FILE="$NOPASS_CONF"
+  elif sudo grep -qE "$NOPASS_REGEX" "/etc/sudoers"; then
+    echo 'enabling sudo password...'
+    CONF="$WITHPASS"
+    CONF_FILE="$WITHPASS_CONF"
+  else
+    echo 'error. check /etc/sudoers and /etc/sudoers.d'
+    exit 1
+  fi
+  replace
+}
+
+if echo "${@}" | grep -q 'h'; then
+  echo "
+USAGE: $(basename "$0") <yes|no|status>
+
+Options:
+
+[None]	toggle sudo password on or off
+yes	enable sudo password
+no	disable sudo password
+status	get sudo password status
+  "
+  exit 1
+elif [ "$1" = "status" ] || [ "$1" = "-s" ]; then
+  if [ -f $WITHPASS_CONF ]; then
+    echo 'sudo password is enabled.'
+    exit 0
+  elif [ -f "$NOPASS_CONF" ]; then
+    echo 'sudo password is disabled.'
+    exit 0
+  elif sudo grep -qE "$WITHPASS_REGEX" "/etc/sudoers"; then
+    echo 'sudo password is enabled.'
+    exit 0
+  elif sudo grep -qE "$NOPASS_REGEX" "/etc/sudoers"; then
+    echo 'sudo password is disabled.'
+    exit 0
+  fi
+fi
+
+# start:
+do_replacement "${@}"
+echo 'done.'
+echo
+echo 'conf files:'
+find /etc/sudoers.d -type f -name "sudoask*"
+echo
+echo 'modified entries:'
+sudo grep -oE "$ALL_REGEX" /etc/sudoers.d/*
