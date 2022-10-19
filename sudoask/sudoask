@@ -1,7 +1,7 @@
 #!/bin/sh
 
-WITHPASS_CONF="/etc/sudoers.d/sudoask_yes.conf"
-NOPASS_CONF="/etc/sudoers.d/sudoask_no.conf"
+WITHPASS_CONF="/etc/sudoers.d/sudoask_yes"
+NOPASS_CONF="/etc/sudoers.d/sudoask_no"
 WITHPASS_REGEX='(^%(admin|sudo|wheel)\s+ALL\s=\s\((ALL|ALL:ALL)\)\s)(ALL)'
 NOPASS_REGEX='(^%(admin|sudo|wheel)\s+ALL\s=\s\((ALL|ALL:ALL)\)\s)(NOPASSWD:ALL)'
 ALL_REGEX='^%(admin|sudo|wheel)\s+ALL\s=\s\((ALL|ALL:ALL)\)\s(ALL|NOPASSWD:ALL)'
