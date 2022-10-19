@@ -1,0 +1,12 @@
+.idea
+.idea/*
+*.egg-info
+dist
+dist/*
+build
+build/*
+*.bak
+.venv
+.venv/*
+venv
+venv/*
