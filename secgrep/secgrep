@@ -1,0 +1,50 @@
+#!/bin/sh
+
+if uname -a | grep -qi darwin; then
+  MAC=1
+fi
+
+ignored_wildcards='.*(__MACOSX|img|images|fonts|Thumbs.db).*'
+ignored_extensions='.*\.(DS_Store|jpg|gif|png|woff|woff2|css|mov|mpg|mp3|mp4|avi|wmv|swf|wav|psd|eps|ai)$'
+ignored_dirs='.*/$'
+
+wildcards='.*(pkcs|notes|manual|backup|ssh|admin|\.git|id_rsa|places.sqlite|History|Login Data|logins.json|Cookies|cookies.sqlite|private|vpn|secret|creds|credentials|auth|config|pass|password|\.aws|mongo|api.{1}key).*'
+extensions='\.(reg|ps1|db|key|pem|crt|cer|pfx|sh|py|rb|go|rdp|bat|cmd|com|pl|ini|conf|sql|sqlite|one|toc|toc2)$'
+
+additional_extensions='\.(env|iso|service|bak|back|backup|orig|txt|pdf|xls|xlsm|xlsx|csv|tsv|ppt|pptx|exe|msi|7z|bzip2|cpio|tar|gz|bz2|xz|zip|doc|docx|pages|bson|xml|js)$'
+additional_misc='.*(credit.{1}card|bank|tax|w2|confidential|invoice|ssn|ssh|rsync|login|node_modules|__pycache__|user|admin|root).*'
+
+if [ -n "$2" ]; then
+  FILE="$2"
+else
+  FILE="$1"
+fi
+
+if [ ! -f "$FILE" ]; then
+  echo "File: ${FILE} not found."
+  exit 1
+fi
+
+grepit() {
+  if [ -n "$MAC" ]; then
+    awk '{$1=$1}1' "$FILE" | awk 'NF>0' | sed -E 's/\s$//g'
+  else
+    awk '{$1=$1}1' "$FILE" | awk 'NF>0' | sed -r 's/\s$//g'
+  fi
+|
+
+ignoreit() {
+  grep -viE "($ignored_wildcards)|($ignored_extensions)|($ignored_dirs)"
+}
+
+scoutit() {
+  grep --color -iE "($wildcards)|($extensions)|($additional_extensions)|($addtitional_misc)"
+}
+
+if [ "$1" = "-d" ] || [ "$1" = "--defluff" ]; then
+  grepit | ignoreit
+  exit $?
+else
+  grepit | scoutit | ignoreit
+  exit $?
+fi
