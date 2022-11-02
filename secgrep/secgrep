@@ -31,7 +31,7 @@ grepit() {
   else
     awk '{$1=$1}1' "$FILE" | awk 'NF>0' | sed -r 's/\s$//g'
   fi
-|
+}
 
 ignoreit() {
   grep -viE "($ignored_wildcards)|($ignored_extensions)|($ignored_dirs)"
