@@ -12,7 +12,7 @@ kill_mean() {
 }
 
 if [ -z "$procs" ]; then
-  echo "There are no snaps pending update. Exiting..."
+  echo "Exiting..."
   exit 0
 fi
 
