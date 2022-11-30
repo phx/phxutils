@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# run with -y or -f to suppress request for input
+
+procs="$(sudo snap refresh --list | awk 'NR>1{print $1}')"
+
+kill_nice() {
+  sudo pkill "${@}" >/dev/null 2>&1
+}
+
+kill_mean() {
+  sudo pkill -9 "${@}" >/dev/null 2>&1
+}
+
+if [ -z "$procs" ]; then
+  echo "There are no snaps pending update. Exiting..."
+  exit 0
+fi
+
+if [ ! "$1" = "-y" ] || [ ! "$1" = "-f" ]; then
+  echo "The following processes are about to be killed before the upgrade:"
+  echo "$procs"
+  echo
+  read -r -p "If you are OK with this, hit [Enter] to continue or Ctrl-C to exit:"
+fi
+
+for proc in $procs; do
+  echo "updating snap: ${proc}..."
+  kill_nice "$proc" || kill_mean "$proc"
+  sudo snap refresh "$proc"
+  echo "you can now restart ${proc}."
+done
