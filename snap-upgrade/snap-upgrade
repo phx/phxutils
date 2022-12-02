@@ -5,10 +5,13 @@ procs="$(sudo snap refresh --list | awk 'NR>1{print $1}')"
 
 kill_nice() {
   sudo pkill "${@}" >/dev/null 2>&1
+  sudo snap refresh "${@}" >/dev/null 2>&1
+
 }
 
 kill_mean() {
   sudo pkill -9 "${@}" >/dev/null 2>&1
+  sudo snap refresh "${@}"
 }
 
 if [ -z "$procs" ]; then
@@ -26,6 +29,5 @@ fi
 for proc in $procs; do
   echo "updating snap: ${proc}..."
   kill_nice "$proc" || kill_mean "$proc"
-  sudo snap refresh "$proc"
   echo "you can now restart ${proc}."
 done
