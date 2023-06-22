@@ -3,6 +3,8 @@
 logfile='/var/log/autoupdates.log'
 
 export DEBIAN_FRONTEND=noninteractive
+export NEEDRESTART_MODE=a
+echo 'libc6 libraries/restart-without-asking boolean true' | debconf-set-selections
 
 log() {
   sudo tee -a "$logfile" 2>&1
@@ -23,18 +25,27 @@ checkreboot
 
 sudo apt-get update 2>/dev/null
 
-updates=$(apt list --upgradable | wc -l | awk '{$1=$1}1')
+updates=$(apt list --upgradable 2>/dev/null | wc -l | awk '{$1=$1}1')
 
 if [ $updates -gt 1 ]; then
-  echo "$updates updates will be applied" | log
+  echo "[i] $updates updates will be applied" | log
 else
   echo "No updates available" | log
   (echo "UPDATE FINISHED - $(date)" | log) && exit 0
   exit 0
 fi
 
-sudo apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" dist-upgrade || (echo 'dist-upgrade error.' | log)
-
+echo "[i] executing autoremove..." | log
+sudo apt-get -fuy --force-yes autoremove
+checkreboot
+echo "[i] executing clean..." | log
+sudo apt-get --force-yes clean
+checkreboot
+echo "[i] executing upgrade..."
+sudo apt-get ---force-yes -o Dpkg::Options::="--force-confdef" --force-yes -o Dpkg::Options::="--force-confold" -fuy upgrade || (echo 'dist-upgrade error.' | log)
+checkreboot
+echo "[i] executing dist-upgrade..."
+sudo apt-get ---force-yes -o Dpkg::Options::="--force-confdef" --force-yes -o Dpkg::Options::="--force-confold" -fuy dist-upgrade || (echo 'dist-upgrade error.' | log)
 checkreboot
 
 (echo "UPDATE FINISHED - $(date)" | log) && exit 0
