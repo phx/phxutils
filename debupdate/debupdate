@@ -5,7 +5,7 @@ hostname="$(hostname)"
 
 export DEBIAN_FRONTEND=noninteractive
 export NEEDRESTART_MODE=a
-echo 'libc6 libraries/restart-without-asking boolean true' | debconf-set-selections
+echo 'libc6 libraries/restart-without-asking boolean true' | sudo -E debconf-set-selections
 
 log() {
   grep --line-buffered -E '.*' | sed -r "s/(.*)/${hostname}: \1/g" | sudo -E tee -a "$logfile" 2>&1
@@ -23,7 +23,7 @@ checkreboot() {
 true | sudo -E tee "$logfile"
 
 echo
-echo "$(hostname) - UPDATE STARTED - $(date)" | log
+echo "UPDATE STARTED - $(date)" | log
 echo
 checkreboot
 
