@@ -7,25 +7,25 @@ export NEEDRESTART_MODE=a
 echo 'libc6 libraries/restart-without-asking boolean true' | debconf-set-selections
 
 log() {
-  sudo tee -a "$logfile" 2>&1
+  sudo -E tee -a "$logfile" 2>&1
 }
 
 checkreboot() {
   if [ -f /var/run/reboot-required ]; then
     echo "REBOOTING..." | sudo tee log
-    sudo reboot
+    sudo -E reboot
   fi
 }
 
-true | sudo tee "$logfile"
+true | sudo -E tee "$logfile"
 
 echo "$(hostname) - UPDATE STARTED - $(date)" | log
 
 checkreboot
 
-sudo apt-get update 2>/dev/null
+sudo -E apt-get update 2>/dev/null
 
-updates=$(apt list --upgradable 2>/dev/null | wc -l | awk '{$1=$1}1')
+updates=$(sudo -E apt list --upgradable 2>/dev/null | wc -l | awk '{$1=$1}1')
 
 if [ $updates -gt 1 ]; then
   echo "[i] $(hostname): $updates updates will be applied" | log
@@ -36,17 +36,16 @@ else
 fi
 
 echo "[i] $(hostname): executing autoremove..." | log
-sudo apt-get -fuy --allow autoremove
+sudo -E apt-get -fuy autoremove
 checkreboot
 echo "[i] $(hostname): executing clean..." | log
-sudo apt-get --allow clean
+sudo -E apt-get clean
 checkreboot
 echo "[i] $(hostname): executing upgrade..."
-sudo apt-get --allow -o Dpkg::Options::="--force-confdef" --allow -o Dpkg::Options::="--force-confold" -fuy upgrade || (echo 'dist-upgrade error.' | log)
+sudo -E apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -fuy upgrade || (echo 'dist-upgrade error.' | log)
 checkreboot
 echo "[i] $(hostname): executing dist-upgrade..."
-sudo apt-get --allow -o Dpkg::Options::="--force-confdef" --allow -o Dpkg::Options::="--force-confold" -fuy dist-upgrade || (echo 'dist-upgrade error.' | log)
+sudo -E apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -fuy dist-upgrade || (echo 'dist-upgrade error.' | log)
 checkreboot
 
 (echo "$(hostname) - UPDATE FINISHED - $(date)" | log) && exit 0
-
