@@ -19,7 +19,7 @@ checkreboot() {
 
 true | sudo tee "$logfile"
 
-echo "UPDATE STARTED - $(date)" | log
+echo "$(hostname) - UPDATE STARTED - $(date)" | log
 
 checkreboot
 
@@ -28,25 +28,25 @@ sudo apt-get update 2>/dev/null
 updates=$(apt list --upgradable 2>/dev/null | wc -l | awk '{$1=$1}1')
 
 if [ $updates -gt 1 ]; then
-  echo "[i] $updates updates will be applied" | log
+  echo "[i] $(hostname): $updates updates will be applied" | log
 else
-  echo "No updates available" | log
-  (echo "UPDATE FINISHED - $(date)" | log) && exit 0
+  echo "[i] $(hostname): No updates available" | log
+  (echo "$(hostname) - UPDATE FINISHED - $(date)" | log) && exit 0
   exit 0
 fi
 
-echo "[i] executing autoremove..." | log
-sudo apt-get -fuy --force-yes autoremove
+echo "[i] $(hostname): executing autoremove..." | log
+sudo apt-get -fuy --allow autoremove
 checkreboot
-echo "[i] executing clean..." | log
-sudo apt-get --force-yes clean
+echo "[i] $(hostname): executing clean..." | log
+sudo apt-get --allow clean
 checkreboot
-echo "[i] executing upgrade..."
-sudo apt-get ---force-yes -o Dpkg::Options::="--force-confdef" --force-yes -o Dpkg::Options::="--force-confold" -fuy upgrade || (echo 'dist-upgrade error.' | log)
+echo "[i] $(hostname): executing upgrade..."
+sudo apt-get --allow -o Dpkg::Options::="--force-confdef" --allow -o Dpkg::Options::="--force-confold" -fuy upgrade || (echo 'dist-upgrade error.' | log)
 checkreboot
-echo "[i] executing dist-upgrade..."
-sudo apt-get ---force-yes -o Dpkg::Options::="--force-confdef" --force-yes -o Dpkg::Options::="--force-confold" -fuy dist-upgrade || (echo 'dist-upgrade error.' | log)
+echo "[i] $(hostname): executing dist-upgrade..."
+sudo apt-get --allow -o Dpkg::Options::="--force-confdef" --allow -o Dpkg::Options::="--force-confold" -fuy dist-upgrade || (echo 'dist-upgrade error.' | log)
 checkreboot
 
-(echo "UPDATE FINISHED - $(date)" | log) && exit 0
+(echo "$(hostname) - UPDATE FINISHED - $(date)" | log) && exit 0
 
