@@ -1,0 +1,201 @@
+#!/usr/bin/env bash
+
+if [[ ("$1" = "-h") || ("$1" = "--help") ]]; then
+  echo "
+USAGE: flaskup </path/to/new_app_name> <port>
+
+Defaults (if run without arguments):
+
+path:    [CURRENT_DIRECTORY]/flaskapp
+port:    5000
+"
+exit 1
+fi
+
+APP_DIR="${1:-"${PWD}/flaskapp"}"
+APP_DIR="$(realpath "$APP_DIR")"
+PORT=${2:-5000}
+
+if ! command -v python3 >/dev/null 2>&1; then
+  echo 'python3 must be installed.'
+fi
+
+if ! python3 -c 'import pip' >/dev/null 2>&1; then
+  if command -v curl >/dev/null 2>&1; then
+    curl -skLo /tmp/get-pip.py 'https://bootstrap.pypa.io/get-pip.py'
+  else
+    echo 'requires curl or wget to be installed.'
+    exit 1
+  fi
+  python3 /tmp/get-pip.py
+fi
+
+if [[ ! -d "$APP_DIR" ]]; then
+  mkdir -p "$APP_DIR"
+fi
+
+cd "$APP_DIR" && mkdir -p uploads downloads scripts templates static
+for dir in css fonts img js; do
+  mkdir -p "scripts/assets/${dir}"
+done || exit 1
+
+touch static/favicon.ico
+
+cd scripts/assets/js || exit 1
+JQUERY_JS='https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js'
+CLIPBOARD_JS='https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/1.4.0/clipboard.min.js'
+BOOTSTRAP_JS='https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.min.js'
+SEMANTIC_JS='https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.5.0/semantic.min.js'
+POPPER_JS='https://cdnjs.cloudflare.com/ajax/libs/popper.js/2.9.2/umd/popper.min.js'
+FONTAWESOME_JS='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/js/all.min.js'
+for asset in $JQUERY_JS $CLIPBOARD_JS $BOOTSTRAP_JS $SEMANTIC_JS $POPPER_JS $FONTAWESOME_JS; do
+  curl -skLO "$asset"
+done
+
+cd ../css || exit 1
+BOOTSTRAP_CSS='https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css'
+SEMANTIC_CSS='https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.5.0/semantic.min.css'
+FONTAWESOME_CSS='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css'
+for asset in $BOOTSTRAP_CSS $SEMANTIC_CSS $FONTAWESOME_CSS; do
+  curl -skLO "$asset"
+done
+
+APP_INI="$(cat <<EOF
+[uwsgi]
+
+master = true
+http = 0.0.0.0:5000
+module = wsgi:app
+processes = 2 * cpu.cores
+enable-threads = true
+memory-report = true
+EOF
+)"
+cd "$APP_DIR" && echo "$APP_INI" > app.ini
+
+WSGI="$(cat <<EOF
+from app import app
+
+if __name__ == '__main__':
+    app.run()
+EOF
+)"
+cd "$APP_DIR" && echo "$WSGI" > uwsgi.py
+
+REQUIREMENTS="$(cat <<EOF
+astroid
+click
+Flask
+isort
+itsdangerous
+Jinja2
+lazy-object-proxy
+MarkupSafe
+mccabe
+pandoc
+ply
+pylint
+pypandoc
+shelljob
+six
+toml
+typed-ast
+uWSGI
+Werkzeug
+wrapt
+EOF
+)"
+cd "$APP_DIR" && echo "$REQUIREMENTS" > requirements.txt
+
+SECRET_KEY="$(python3 -c 'import secrets; print(secrets.token_hex())')"
+APP="$(cat <<EOF
+#!${APP_DIR}/.venv/bin/python3
+
+import os, sys, time, re, json
+from flask import Flask, jsonify, make_response, Response, request, redirect, url_for, abort, send_from_directory
+from flask import flash, render_template, stream_with_context
+from markupsafe import escape
+from werkzeug.utils import secure_filename
+from shelljob import proc, job
+from datetime import datetime
+from pprint import pprint
+
+os.environ["PYTHONUNBUFFERED"] = "1"
+abspath = os.path.abspath(__file__)
+dname = os.path.dirname(abspath)
+os.chdir(dname)
+UPLOAD_FOLDER = dname + '/uploads'
+DOWNLOAD_FOLDER = dname + '/downloads'
+SCRIPTS_FOLDER = dname + '/scripts'
+ALLOWED_EXTENSIONS = {'txt', 'csv', 'json'}
+
+app = Flask(__name__)
+app.secret_key = '${SECRET_KEY}'
+app.config['PREFERRED_URL_SCHEME'] = 'http'
+app.config['SCRIPTS_FOLDER'] = SCRIPTS_FOLDER
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['DOWNLOAD_FOLDER'] = DOWNLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = 32 * 1024 * 1024
+
+def timestamp():
+    return datetime.today().strftime('%Y%m%d-%I%M%S%p')
+
+
+def allowed_file(filename):
+    return '.' in filename and filename.split('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+""" INDEX (/) AND STATIC ROUTES """
+
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory(os.path.join(app.root_path, 'static'),
+                               'favicon.ico', mimetype='image/vnd.microsoft.icon')
+
+
+@app.route('/assets/<string:context>/<string:file>')
+def static_assets(context, file):
+    return send_from_directory('static/assets/' + context + '/', file)
+
+
+@app.errorhandler(404)
+def not_found(error):
+  return make_response(jsonify({'error': 'Not found'}), 404)
+
+
+@app.route('/')
+def index():
+    return create_response(jsonify({'status': 'ok'}))
+
+
+"""
+#more routes:
+
+@app.route('/config/<string:context>', defaults={'subcontext': ''}, methods=['POST'])
+@app.route('/config/<string:context>/<string:subcontext>', methods=['POST'])
+def config(context, subcontext):
+    pass # do stuff here
+"""
+
+""" MAIN """
+
+if __name__ == '__main__':
+    # app.run(host='127.0.0.1', port=${PORT}, debug=True)
+    app.run(host='0.0.0.0', port=${PORT}, debug=True)
+    # app.run()
+EOF
+)"
+#cd "$APP_DIR" && echo "$APP" | sed "s/@@@@SECRET_KEY@@@@/${SECRET_KEY}/g;s/@@@@PORT@@@@/${PORT}/g" > app.py
+cd "$APP_DIR" && echo "$APP" > app.py
+chmod +x app.py
+
+cd "$APP_DIR" || exit 1
+echo "creating virtual environment at $(pwd)/.venv..."
+python3 -m venv .venv || (echo 'ran into a problem installing the virtualenv.' && exit 1)
+
+echo "installing requirements..."
+.venv/bin/python3 -m pip install --upgrade pip
+.venv/bin/python3 -m pip install -r requirements.txt && echo -e "\nFlaskup finished. Run the app with '${APP_DIR}/app.py'\n" && exit 0
+
+echo 'ran into a problem installing requirements'
+exit 1
