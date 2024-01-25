@@ -1,0 +1,114 @@
+#!/usr/bin/env bash
+
+if ! command -v aws >/dev/null 2>&1; then
+  echo 'please install aws cli.'
+  exit 1
+fi
+
+if ! command -v jq >/dev/null 2>&1; then
+  echo 'please install jq'
+  exit 1
+fi
+
+unset AWS_ACCESS_KEY_ID
+unset AWS_SECRET_ACCESS_KEY
+BACKUP_CREDS="$(/tmp/awskeycheck.backup)"
+
+aws_logout() {
+  if [[ -f "${HOME}/.aws/credentials" ]]; then
+    mv "${HOME}/.aws/credentials" "$BACKUP_CREDS"
+  fi
+}
+
+aws_login() {
+  if [[ -f "$BACKUP_CREDS" ]]; then
+    mv "$BACKUP_CREDS" "${HOME}/.aws/credentials"
+  fi
+}
+
+test_keypair() {
+  if ! aws sts get-caller-identity --output text >/dev/null 2>&1; then
+    echo "RESULT: FAIL"
+  else
+    echo "RESULT: *** SUCCESS ***"
+  fi
+  echo
+}
+
+usage() {
+echo '
+Usage: awskeycheck [ -f [FILE CONTAINING CREDENTIALS] | <[AWS_ACCESS_KEY_ID] [AWS_SECRET_ACCESS_KEY]> ]
+
+Options:
+-f | --file     -f [FILE] will parse keys from file and rotate through them to check validity.
+NONE            [AWS_ACCESS_KEY_ID] [AWS_SECRET_ACCESS_KEY] will check a single set of credentials passed as $1 and $2.
+
+(will prompt if keys not provided)
+'
+}
+
+div() {
+  echo ----------------------------------------------------------------------------------------
+}
+
+if [[ ("$1" = "-h") || ("$1" = "--help") ]]; then
+  usage
+  exit 1
+fi
+
+div
+cat <<'EOF'
+                    _                   _               _    
+  __ ___      _____| | _____ _   _  ___| |__   ___  ___| | __
+ / _` \ \ /\ / / __| |/ / _ \ | | |/ __| '_ \ / _ \/ __| |/ /
+| (_| |\ V  V /\__ \   <  __/ |_| | (__| | | |  __/ (__|   < 
+ \__,_| \_/\_/ |___/_|\_\___|\__, |\___|_| |_|\___|\___|_|\_\
+                             |___/                           
+EOF
+div
+echo "STARTED: $(date)"
+div
+
+aws_logout
+
+if [[ ("$1" = "-f") || ("$1" = "--file") ]]; then
+  ids="$(mktemp)"
+  keys="$(mktemp)"
+  FILE="$2"
+  DATA="$(grep -oP '(AKIA.{16})|([A-Za-z0-9]{40})' "$FILE")"
+  echo "$DATA" | while read -r line; do
+    echo "$line" | grep -oP 'AKIA.{16}' >> "$ids"
+    echo "$line" | grep -oP '[A-Za-z0-9]{40}' >> "$keys"
+  done
+  paste -d' ' <(cat "$ids") <(cat "$keys") | grep -v 'AKIA.*AKIA' | while read -r line; do
+    AWS_ACCESS_KEY_ID="$(echo "$line" | cut -d ' ' -f1)"
+    AWS_SECRET_ACCESS_KEY="$(echo "$line" | cut -d ' ' -f2)"
+    echo "AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID"
+    echo "AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY"
+  test_keypair
+  unset AWS_ACCESS_KEY_ID
+  unset AWS_SECRET_ACCESS_KEY
+  done
+  rm -f "$ids" "$keys"
+  div
+  echo "FINISHED: $(date)"
+  div
+  exit $?
+elif [[ -n $1 ]]; then
+  AWS_ACCESS_KEY_ID="$1"
+  AWS_SECRET_ACCESS_KEY="$2"
+else
+  read -r -p 'AWS Access Key ID: ' AWS_ACCESS_KEY_ID
+  read -r -p 'AWS Secret Access Key: ' AWS_SECRET_ACCESS_KEY
+fi
+
+test_keypair
+
+unset AWS_ACCESS_KEY_ID
+unset AWS_SECRET_ACCESS_KEY
+
+aws_login
+
+div
+echo "FINISHED: $(date)"
+div
