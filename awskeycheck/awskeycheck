@@ -12,7 +12,7 @@ fi
 
 unset AWS_ACCESS_KEY_ID
 unset AWS_SECRET_ACCESS_KEY
-BACKUP_CREDS="$(/tmp/awskeycheck.backup)"
+BACKUP_CREDS="/tmp/awskeycheck.backup"
 
 aws_logout() {
   if [[ -f "${HOME}/.aws/credentials" ]]; then
