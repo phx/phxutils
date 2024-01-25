@@ -12,17 +12,16 @@ fi
 
 unset AWS_ACCESS_KEY_ID
 unset AWS_SECRET_ACCESS_KEY
-BACKUP_CREDS="/tmp/awskeycheck.backup"
 
 aws_logout() {
   if [[ -f "${HOME}/.aws/credentials" ]]; then
-    mv "${HOME}/.aws/credentials" "$BACKUP_CREDS"
+    mv "${HOME}/.aws/credentials" "${HOME}/.aws/credentials.awskeycheckbackup"
   fi
 }
 
 aws_login() {
-  if [[ -f "$BACKUP_CREDS" ]]; then
-    mv "$BACKUP_CREDS" "${HOME}/.aws/credentials"
+  if [[ -f "${HOME}/.aws/credentials.awskeycheckbackup" ]]; then
+    mv "${HOME}/.aws/credentials.awskeycheckbackup" "${HOME}/.aws/credentials"
   fi
 }
 
@@ -93,6 +92,7 @@ if [[ ("$1" = "-f") || ("$1" = "--file") ]]; then
   div
   echo "FINISHED: $(date)"
   div
+  aws_login
   exit $?
 elif [[ -n $1 ]]; then
   AWS_ACCESS_KEY_ID="$1"
