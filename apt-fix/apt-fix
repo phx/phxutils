@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "🔧 Starting APT repair process..."
+
+# --- Step 1: Basic environment check
+if ! command -v apt-get &>/dev/null; then
+  echo "❌ Error: This script must run on a Debian-based system (requires apt-get)."
+  exit 1
+fi
+
+# --- Step 2: Backup current sources.list
+BACKUP_DIR="/etc/apt/backup-$(date +%F-%H%M%S)"
+sudo mkdir -p "$BACKUP_DIR"
+echo "📦 Backing up current APT sources to $BACKUP_DIR"
+sudo cp -a /etc/apt/sources.list "$BACKUP_DIR/" 2>/dev/null || true
+sudo cp -a /etc/apt/sources.list.d "$BACKUP_DIR/" 2>/dev/null || true
+
+# --- Step 3: Detect distro info
+. /etc/os-release
+DISTRO="${ID:-debian}"
+CODENAME="${VERSION_CODENAME:-$(lsb_release -sc 2>/dev/null || echo stable)}"
+echo "🧭 Detected distribution: $DISTRO ($CODENAME)"
+
+# --- Step 4: Ensure HTTPS and CA certs
+sudo apt-get update --allow-releaseinfo-change || true
+sudo apt-get install -y --no-install-recommends ca-certificates curl gnupg lsb-release apt-transport-https || true
+
+# --- Step 5: Clean up broken keyrings
+sudo mkdir -p /usr/share/keyrings
+sudo rm -f /etc/apt/trusted.gpg.d/* 2>/dev/null || true
+sudo rm -f /etc/apt/trusted.gpg 2>/dev/null || true
+
+# --- Step 6: Rebuild sources.list based on distro
+echo "🧱 Rebuilding main sources.list ..."
+case "$DISTRO" in
+  kali)
+    echo "deb [signed-by=/usr/share/keyrings/kali-archive-keyring.gpg] http://http.kali.org/kali kali-rolling main contrib non-free" | sudo tee /etc/apt/sources.list
+    curl -fsSL https://archive.kali.org/archive-key.asc | sudo gpg --dearmor -o /usr/share/keyrings/kali-archive-keyring.gpg
+    ;;
+  ubuntu)
+    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] http://archive.ubuntu.com/ubuntu $CODENAME main restricted universe multiverse" | sudo tee /etc/apt/sources.list
+    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] http://archive.ubuntu.com/ubuntu $CODENAME-updates main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list
+    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] http://security.ubuntu.com/ubuntu $CODENAME-security main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list
+    curl -fsSL https://archive.ubuntu.com/ubuntu/project/ubuntu-archive-keyring.gpg | sudo gpg --dearmor -o /usr/share/keyrings/ubuntu-archive-keyring.gpg
+    ;;
+  debian)
+    echo "deb [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] http://deb.debian.org/debian $CODENAME main contrib non-free non-free-firmware" | sudo tee /etc/apt/sources.list
+    echo "deb [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] http://deb.debian.org/debian $CODENAME-updates main contrib non-free non-free-firmware" | sudo tee -a /etc/apt/sources.list
+    echo "deb [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] http://security.debian.org/debian-security $CODENAME-security main contrib non-free non-free-firmware" | sudo tee -a /etc/apt/sources.list
+    curl -fsSL https://ftp-master.debian.org/keys/archive-key-12.asc | sudo gpg --dearmor -o /usr/share/keyrings/debian-archive-keyring.gpg
+    ;;
+  *)
+    echo "⚠️ Unknown distro ID ($DISTRO) — leaving your sources.list intact."
+    ;;
+esac
+
+# --- Step 7: Attempt to preserve 3rd-party repos
+echo "🔍 Checking for custom repos..."
+for f in /etc/apt/sources.list.d/*.list; do
+  [ -f "$f" ] || continue
+  echo "🧩 Preserving third-party repo: $(basename "$f")"
+done
+
+# --- Step 8: Refresh keys for 3rd-party repos if possible
+if command -v apt-key &>/dev/null; then
+  echo "♻️ Refreshing all APT keys (if legacy apt-key used)..."
+  sudo apt-key adv --refresh-keys --keyserver keyserver.ubuntu.com || true
+fi
+
+# --- Step 9: Clean, update, and repair
+echo "🧹 Cleaning and repairing packages..."
+sudo rm -rf /var/lib/apt/lists/*
+sudo apt-get clean
+sudo apt-get update --allow-unauthenticated || true
+sudo apt-get install -f -y || true
+sudo dpkg --configure -a || true
+sudo apt-get dist-upgrade -y || true
+sudo apt-get autoremove -y
+
+echo "✅ APT repair complete. Package manager should now be functional."
+echo "   Backup of previous configuration: $BACKUP_DIR"

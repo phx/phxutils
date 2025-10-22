@@ -8,7 +8,7 @@ export NEEDRESTART_MODE=a
 echo 'libc6 libraries/restart-without-asking boolean true' | sudo -E debconf-set-selections
 
 log() {
-  grep --line-buffered -E '.*' | sed -r "s/(.*)/${hostname}: \1/g" | sudo -E tee -a "$logfile" 2>&1
+  grep --line-buffered -E '.*' 2>&1 | stdbuf -oL sed -r "s/(.*)/${hostname}: \1/g" 2>&1 | stdbuf sudo -E tee -a "$logfile" 2>&1
 }
 
 checkreboot() {
