@@ -1,82 +1,185 @@
 #!/usr/bin/env bash
-set -euo pipefail
+# Robust self-heal for Debian-based apt/dpkg
+# Works on Kali/Ubuntu/Debian (others likely fine)
 
-echo "🔧 Starting APT repair process..."
+set -u  # don't exit on error; we handle errors ourselves
+PASS_MAX=6
 
-# --- Step 1: Basic environment check
-if ! command -v apt-get &>/dev/null; then
-  echo "❌ Error: This script must run on a Debian-based system (requires apt-get)."
+log(){ printf "\n[%s] %s\n" "$(date +%H:%M:%S)" "$*"; }
+run(){ log "$*"; eval "$@" || true; }
+
+require_root(){
+  if [ "$(id -u)" -ne 0 ]; then
+    echo "Please run as root: sudo bash $0"
+    exit 1
+  fi
+}
+
+detect_distro(){
+  . /etc/os-release
+  DISTRO="${ID:-debian}"
+  CODENAME="${VERSION_CODENAME:-$(lsb_release -sc 2>/dev/null || echo stable)}"
+  ARCH="${DPKG_ARCH:-$(dpkg --print-architecture 2>/dev/null || echo amd64)}"
+}
+
+backup_configs(){
+  STAMP="$(date +%F-%H%M%S)"
+  BAK="/etc/apt/backup-$STAMP"
+  mkdir -p "$BAK"
+  cp -a /etc/apt/sources.list "$BAK/" 2>/dev/null || true
+  cp -a /etc/apt/sources.list.d "$BAK/" 2>/dev/null || true
+  cp -a /etc/apt/apt.conf.d "$BAK/" 2>/dev/null || true
+  log "Backed up APT configs to $BAK"
+}
+
+disable_broken_hooks(){
+  # command-not-found hook often explodes when python3-apt is broken
+  CNF="/etc/apt/apt.conf.d/50command-not-found"
+  if [ -f "$CNF" ]; then
+    mv -f "$CNF" "${CNF}.disabled" || true
+    log "Temporarily disabled $CNF"
+  fi
+  # also ensure any custom Post-Invoke hooks are neutralized
+  cat >/etc/apt/apt.conf.d/99-selfheal-disable-hooks <<'EOF'
+APT::Update::Post-Invoke-Success { "true"; };
+DPkg::Post-Invoke { "true"; };
+DPkg::Pre-Invoke { "true"; };
+Acquire::Retries "3";
+EOF
+}
+
+enable_hooks_back(){
+  rm -f /etc/apt/apt.conf.d/99-selfheal-disable-hooks || true
+  CNF="/etc/apt/apt.conf.d/50command-not-found.disabled"
+  if [ -f "$CNF" ]; then
+    mv -f "$CNF" "${CNF%.disabled}" || true
+    log "Re-enabled command-not-found hook"
+  fi
+}
+
+sanitize_sources_list_d(){
+  # move non-.list junk aside; apt complains about *.old, *.save, etc.
+  find /etc/apt/sources.list.d -maxdepth 1 -type f ! -name '*.list' \
+    -exec sh -c 'for f; do mv -v "$f" "$f.disabled"; done' sh {} + 2>/dev/null || true
+}
+
+ensure_keyrings_and_core_sources(){
+  mkdir -p /usr/share/keyrings
+
+  case "$DISTRO" in
+    kali)
+      echo "deb [signed-by=/usr/share/keyrings/kali-archive-keyring.gpg] http://http.kali.org/kali kali-rolling main contrib non-free" > /etc/apt/sources.list
+      curl -fsSL https://archive.kali.org/archive-key.asc | gpg --dearmor -o /usr/share/keyrings/kali-archive-keyring.gpg
+      ;;
+    ubuntu)
+      KEY="/usr/share/keyrings/ubuntu-archive-keyring.gpg"
+      {
+        echo "deb [arch=${ARCH} signed-by=${KEY}] http://archive.ubuntu.com/ubuntu ${CODENAME} main restricted universe multiverse"
+        echo "deb [arch=${ARCH} signed-by=${KEY}] http://archive.ubuntu.com/ubuntu ${CODENAME}-updates main restricted universe multiverse"
+        echo "deb [arch=${ARCH} signed-by=${KEY}] http://security.ubuntu.com/ubuntu ${CODENAME}-security main restricted universe multiverse"
+      } > /etc/apt/sources.list
+      curl -fsSL https://archive.ubuntu.com/ubuntu/project/ubuntu-archive-keyring.gpg | gpg --dearmor -o "${KEY}"
+      ;;
+    debian|parrot|linuxmint|pop|zorin)
+      # Treat as Debian for the base repos
+      KEY="/usr/share/keyrings/debian-archive-keyring.gpg"
+      {
+        echo "deb [signed-by=${KEY}] http://deb.debian.org/debian ${CODENAME} main contrib non-free non-free-firmware"
+        echo "deb [signed-by=${KEY}] http://deb.debian.org/debian ${CODENAME}-updates main contrib non-free non-free-firmware"
+        echo "deb [signed-by=${KEY}] http://security.debian.org/debian-security ${CODENAME}-security main contrib non-free non-free-firmware"
+      } > /etc/apt/sources.list
+      # Use Debian 12 key; harmless if newer
+      curl -fsSL https://ftp-master.debian.org/keys/archive-key-12.asc | gpg --dearmor -o "${KEY}"
+      ;;
+    *)
+      log "Unknown distro '$DISTRO' — leaving /etc/apt/sources.list as-is (still backed up)."
+      ;;
+  esac
+}
+
+clear_locks_and_lists(){
+  rm -f /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock /var/cache/apt/archives/lock
+  rm -rf /var/lib/apt/lists/*
+  apt-get clean
+}
+
+core_stack_minimal(){
+  # Try to ensure minimal tooling exists even on half-broken systems
+  # Don't fail if these error; later passes will succeed
+  run "dpkg --configure -a"
+  run "apt-get update --allow-releaseinfo-change"
+  run "apt-get install -y --no-install-recommends ca-certificates curl gnupg apt apt-utils lsb-release"
+  # Fix python3-apt to satisfy apt hooks and python scripts (apt_pkg import)
+  run "apt-get install -y --no-install-recommends python3-apt"
+}
+
+maybe_refresh_legacy_keys(){
+  if command -v apt-key >/dev/null 2>&1; then
+    run "apt-key adv --refresh-keys --keyserver keyserver.ubuntu.com"
+  fi
+}
+
+t64_transition_hint(){
+  # These calls are no-ops if packages don't exist; helpful on desktops in transition
+  for p in libc6t64 libx11-6t64 libxau6t64 libxcb1t64 libxdmcp6t64 libxt6t64; do
+    run "apt-get install -y --allow-downgrades --allow-change-held-packages $p"
+  done
+}
+
+repair_pass(){
+  local ok=1
+
+  run "apt-get update"
+  if [ "${PIPESTATUS[0]:-0}" -ne 0 ]; then ok=0; fi
+
+  run "dpkg --configure -a"
+  if [ "${PIPESTATUS[0]:-0}" -ne 0 ]; then ok=0; fi
+
+  run "apt-get -f install -y"
+  if [ "${PIPESTATUS[0]:-0}" -ne 0 ]; then ok=0; fi
+
+  t64_transition_hint
+
+  run "apt-get dist-upgrade -y"
+  if [ "${PIPESTATUS[0]:-0}" -ne 0 ]; then ok=0; fi
+
+  run "apt-get autoremove -y"
+  return $ok
+}
+
+# ---------------- main ----------------
+require_root
+detect_distro
+log "Detected ${DISTRO} (${CODENAME}) on $(uname -m)"
+backup_configs
+disable_broken_hooks
+sanitize_sources_list_d
+ensure_keyrings_and_core_sources
+clear_locks_and_lists
+core_stack_minimal
+maybe_refresh_legacy_keys
+
+pass=1
+while [ $pass -le $PASS_MAX ]; do
+  log "=== Repair pass $pass/$PASS_MAX ==="
+  if repair_pass; then
+    log "✅ APT looks healthy after pass $pass."
+    HEALTHY=1
+    break
+  else
+    log "⚠️  Issues remain after pass $pass — re-clearing locks/lists and retrying."
+    clear_locks_and_lists
+  fi
+  pass=$((pass+1))
+done
+
+enable_hooks_back
+
+if [ "${HEALTHY:-0}" -ne 1 ]; then
+  log "❌ Could not fully heal APT after $PASS_MAX passes."
+  log "   Check the earliest error lines above; you may have a pinned/held package or a broken 3rd-party repo."
   exit 1
 fi
 
-# --- Step 2: Backup current sources.list
-BACKUP_DIR="/etc/apt/backup-$(date +%F-%H%M%S)"
-sudo mkdir -p "$BACKUP_DIR"
-echo "📦 Backing up current APT sources to $BACKUP_DIR"
-sudo cp -a /etc/apt/sources.list "$BACKUP_DIR/" 2>/dev/null || true
-sudo cp -a /etc/apt/sources.list.d "$BACKUP_DIR/" 2>/dev/null || true
-
-# --- Step 3: Detect distro info
-. /etc/os-release
-DISTRO="${ID:-debian}"
-CODENAME="${VERSION_CODENAME:-$(lsb_release -sc 2>/dev/null || echo stable)}"
-echo "🧭 Detected distribution: $DISTRO ($CODENAME)"
-
-# --- Step 4: Ensure HTTPS and CA certs
-sudo apt-get update --allow-releaseinfo-change || true
-sudo apt-get install -y --no-install-recommends ca-certificates curl gnupg lsb-release apt-transport-https || true
-
-# --- Step 5: Clean up broken keyrings
-sudo mkdir -p /usr/share/keyrings
-sudo rm -f /etc/apt/trusted.gpg.d/* 2>/dev/null || true
-sudo rm -f /etc/apt/trusted.gpg 2>/dev/null || true
-
-# --- Step 6: Rebuild sources.list based on distro
-echo "🧱 Rebuilding main sources.list ..."
-case "$DISTRO" in
-  kali)
-    echo "deb [signed-by=/usr/share/keyrings/kali-archive-keyring.gpg] http://http.kali.org/kali kali-rolling main contrib non-free" | sudo tee /etc/apt/sources.list
-    curl -fsSL https://archive.kali.org/archive-key.asc | sudo gpg --dearmor -o /usr/share/keyrings/kali-archive-keyring.gpg
-    ;;
-  ubuntu)
-    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] http://archive.ubuntu.com/ubuntu $CODENAME main restricted universe multiverse" | sudo tee /etc/apt/sources.list
-    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] http://archive.ubuntu.com/ubuntu $CODENAME-updates main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list
-    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] http://security.ubuntu.com/ubuntu $CODENAME-security main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list
-    curl -fsSL https://archive.ubuntu.com/ubuntu/project/ubuntu-archive-keyring.gpg | sudo gpg --dearmor -o /usr/share/keyrings/ubuntu-archive-keyring.gpg
-    ;;
-  debian)
-    echo "deb [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] http://deb.debian.org/debian $CODENAME main contrib non-free non-free-firmware" | sudo tee /etc/apt/sources.list
-    echo "deb [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] http://deb.debian.org/debian $CODENAME-updates main contrib non-free non-free-firmware" | sudo tee -a /etc/apt/sources.list
-    echo "deb [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] http://security.debian.org/debian-security $CODENAME-security main contrib non-free non-free-firmware" | sudo tee -a /etc/apt/sources.list
-    curl -fsSL https://ftp-master.debian.org/keys/archive-key-12.asc | sudo gpg --dearmor -o /usr/share/keyrings/debian-archive-keyring.gpg
-    ;;
-  *)
-    echo "⚠️ Unknown distro ID ($DISTRO) — leaving your sources.list intact."
-    ;;
-esac
-
-# --- Step 7: Attempt to preserve 3rd-party repos
-echo "🔍 Checking for custom repos..."
-for f in /etc/apt/sources.list.d/*.list; do
-  [ -f "$f" ] || continue
-  echo "🧩 Preserving third-party repo: $(basename "$f")"
-done
-
-# --- Step 8: Refresh keys for 3rd-party repos if possible
-if command -v apt-key &>/dev/null; then
-  echo "♻️ Refreshing all APT keys (if legacy apt-key used)..."
-  sudo apt-key adv --refresh-keys --keyserver keyserver.ubuntu.com || true
-fi
-
-# --- Step 9: Clean, update, and repair
-echo "🧹 Cleaning and repairing packages..."
-sudo rm -rf /var/lib/apt/lists/*
-sudo apt-get clean
-sudo apt-get update --allow-unauthenticated || true
-sudo apt-get install -f -y || true
-sudo dpkg --configure -a || true
-sudo apt-get dist-upgrade -y || true
-sudo apt-get autoremove -y
-
-echo "✅ APT repair complete. Package manager should now be functional."
-echo "   Backup of previous configuration: $BACKUP_DIR"
+log "🎉 Package manager restored. You can now use 'apt-get install' normally."
+exit 0
